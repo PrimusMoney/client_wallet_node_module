@@ -1,0 +1,21 @@
+{
+  "name": "@primusmoney/client_wallet",
+  "version": "0.14.6",
+  "private": true,
+  "license": "UNLICENSED",
+  "author": "PrimusMoney",
+  "homepage": "https://www.primusmoney.com/",
+  "scripts": {
+    "test:node": "mocha ./tests/tests.js"
+  },
+  "dependencies": {
+    "@p2pmoney-org/ethereum_core": "^0.14.6",
+    "@p2pmoney-org/ethereum_erc20": "^0.14.6",
+    "@p2pmoney-org/ethereum_xtra_web": "^0.14.6",
+    "@primusmoney/ethereum_xtra_web": "^0.14.6"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "mocha": "^6.2.1"
+  }
+}
