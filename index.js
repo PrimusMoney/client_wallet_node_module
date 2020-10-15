@@ -6,7 +6,7 @@
 
 console.log('@primusmoney/client_wallet module');
 
-if ( typeof window !== 'undefined' && window ) {
+if ( typeof window !== 'undefined' && window  && (typeof window.simplestore === 'undefined')) {
 	// browser or react-native
 	console.log('creating window.simplestore in @primusmoney/client_wallet index.js');
 
