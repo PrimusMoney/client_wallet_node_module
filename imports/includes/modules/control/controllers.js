@@ -13,6 +13,7 @@ var ModuleControllers = class {
 	//
 	// Client
 	//
+	
 	getClientVersion() {
 		var global = this.global;
 		
@@ -24,6 +25,7 @@ var ModuleControllers = class {
 	//
 	// Settings
 	//
+
 	async readSettings(session, keys, defaultvalue) {
 		var global = this.global;
 		
@@ -43,6 +45,7 @@ var ModuleControllers = class {
 	//
 	// Session
 	//
+
 	getCurrentSessionObject() {
 		var global = this.global;
 		
@@ -126,6 +129,7 @@ var ModuleControllers = class {
 	//
 	// child sessions
 	//
+
 	async openChildSession(session, username, password, network) {
 		var global = this.global;
 		
@@ -134,7 +138,8 @@ var ModuleControllers = class {
 		const result = new Promise((resolve, reject) => { 
 			clientmodules.openChildSession(session, username, password, network, (err, res) => {
 				if (err) reject(err); else resolve(res);
-			});
+			})
+			.catch(err => reject(err));
 		});
 		
 		return result;
@@ -167,6 +172,7 @@ var ModuleControllers = class {
 	//
 	// user
 	//
+
 	getUserInfo(session) {
 		var global = this.global;
 		var commonmodule = global.getModuleObject('common');
@@ -214,7 +220,7 @@ var ModuleControllers = class {
 		const result = new Promise((resolve, reject) => { 
 			commonmodule.getVaultList(session, vaulttype, (err, res) => {
 				if (err) reject(err); else resolve(res);
-			});
+			}); //  does not return a promise
 		});
 
 		var names = [];
@@ -252,7 +258,7 @@ var ModuleControllers = class {
 		const result = new Promise((resolve, reject) => { 
 			commonmodule.openVault(session, vaultname, passphrase, vaulttype, (err, res) => {
 				if (err) reject(err); else resolve(res);
-			});
+			}); //  does not return a promise
 		});
 		
 		return result;
@@ -291,7 +297,7 @@ var ModuleControllers = class {
 		const result = new Promise((resolve, reject) => { 
 			commonmodule.putInVault(session, vaultname, vaulttype, key, value, (err, res) => {
 				if (err) reject(err); else resolve(res);
-			});
+			}); //  does not return a promise
 		});
 		
 		return result;
@@ -364,11 +370,12 @@ var ModuleControllers = class {
 	//
 	// Accounts
 	//
+
 	async getSessionAccountObjects(session, bRefresh) {
 		const result = new Promise((resolve, reject) => { 
 			session.getSessionAccountObjects(bRefresh, (err, res) => {
 				if (err) reject(err); else resolve(res);
-			});
+			}); //  does not return a promise
 		});
 		
 		return result;
@@ -378,7 +385,7 @@ var ModuleControllers = class {
 		const result = new Promise((resolve, reject) => { 
 			session.getAccountObjects(bRefresh, (err, res) => {
 				if (err) reject(err); else resolve(res);
-			});
+			}); //  does not return a promise
 		});
 		
 		return result;
@@ -419,7 +426,8 @@ var ModuleControllers = class {
 		const result = new Promise((resolve, reject) => {
 			storageaccess.user_add_account(sessionuser, account, (err, res) => {
 				if (err) reject(err); else resolve(res);
-			});
+			})
+			.catch(err => reject(err));
 		});
 		
 		return result;
@@ -429,6 +437,7 @@ var ModuleControllers = class {
 	//
 	// Storage-access
 	//
+
 	getArtifact(artifactname) {
 		return this.ethereum_core.getArtifact(artifactname);
 	}
@@ -439,7 +448,7 @@ var ModuleControllers = class {
 		const result = new Promise((resolve, reject) => { 
 			localstorage.readLocalJson(keys, bForceRefresh, (err, res) => {
 				if (err) reject(err); else resolve(res);
-			});
+			}); // does not return a promise
 		});
 		
 		return result;
@@ -451,7 +460,7 @@ var ModuleControllers = class {
 		const result = new Promise((resolve, reject) => { 
 			localstorage.saveLocalJson(keys, json, (err, res) => {
 				if (err) reject(err); else resolve(res);
-			});
+			}); // does not return a promise
 		});
 		
 		return result;
@@ -461,11 +470,17 @@ var ModuleControllers = class {
 	// Web 3 (ethnode)
 	//
 	
-	async setWebProviderUrl(session, providerurl) {
+	 getWeb3ProviderUrl(session) {
 		var global = this.global;
 
-		var commonmodule = global.getModuleObject('common');
+		var ethnodemodule = global.getModuleObject('ethnode');
+
+		return ethnodemodule.getWeb3ProviderUrl(session);
+	 }
 		
+	async setWeb3ProviderUrl(session, providerurl) {
+		var global = this.global;
+
 		var ethnodemodule = global.getModuleObject('ethnode');
 		
 		
@@ -473,7 +488,7 @@ var ModuleControllers = class {
 			// set providerurl as web3 provider
 			ethnodemodule.setWeb3ProviderUrl(providerurl, session, (err,res) => {
 				if (err) reject(err); else resolve(res);
-			});
+			}); // does not return a promise
 		});
 		
 		return result;
@@ -524,7 +539,8 @@ var ModuleControllers = class {
 				
 				if (callback)
 					callback(null, nodeinfo);
-			});
+			})
+			.catch(err => reject(err));
 		};
 
 		const result = new Promise((resolve, reject) => { 
@@ -573,7 +589,8 @@ var ModuleControllers = class {
 					var etherbalance = (ethnodecontrollers ? ethnodecontrollers.getEtherStringFromWei(res) : null);
 					resolve(etherbalance);
 				}
-			});
+			})
+			.catch(err => reject(err));
 		});
 		
 		return result;
@@ -588,7 +605,7 @@ var ModuleControllers = class {
 		return fee;
 	}
 	
-	createTransaction(session, fromaccount) {
+	createEthereumTransaction(session, fromaccount) {
 		var global = this.global;
 		
 		var ethereumnodeaccessmodule = global.getModuleObject('ethereum-node-access');
@@ -598,25 +615,64 @@ var ModuleControllers = class {
 		return ethereumtransaction;
 	}
 	
-	async sendTransaction(session, transaction) {
+	async sendEthereumTransaction(session, transaction) {
 		var global = this.global;
 		
 		var ethnodemodule = global.getModuleObject('ethnode');
-		
-		var ethereumnodeaccessmodule = global.getModuleObject('ethereum-node-access');
 		
 		var EthereumNodeAccess = ethnodemodule.getEthereumNodeAccessInstance(session);
 		
 		const result = new Promise((resolve, reject) => { 
 			EthereumNodeAccess.web3_sendEthTransaction(transaction, (err, res) => {
 				if (err) reject(err); else resolve(res);
-			});
+			})
+			.catch(err => reject(err));
 		});
 		
 		return result;
 	}
 	
+	// transactions
+	async getEthereumTransactionList(session, bRefresh) {
+		var global = this.global;
+		
+		var ethnodemodule = global.getModuleObject('ethnode');
+
+		if (bRefresh !== undefined)
+		console.log('getTransactionList: refresh parameter is not taken into account');
+
+		const result = new Promise((resolve, reject) => { 
+			ethnodemodule.getTransactionList(session, (err, res) => {
+				if (err) reject(err); else resolve(res);
+			})
+			.catch(err => reject(err));
+		});
+
+		return result;
+	}
+
+	async _getEthNodeTransactionObjectFromHash(session, txhash) {
+		throw new Error('not implemented, should create a transaction object from ethereum transaction');
+	}
+	
 	async getTransaction(session, txhash) {
+		var global = this.global;
+		
+		var ethnodemodule = global.getModuleObject('ethnode');
+
+
+		const result = new Promise((resolve, reject) => { 
+			//ethnodemodule.getTransactionObjectFromHash(session, txhash, (err, res) => {
+			this._getEthNodeTransactionObjectFromHash(session, txhash, (err, res) => {
+				if (err) reject(err); else resolve(res);
+			})
+			.catch(err => reject(err));
+		});
+
+		return result;
+	}
+	
+	async getEthereumTransaction(session, txhash) {
 		var global = this.global;
 
 		var ethereumnodeaccessmodule = global.getModuleObject('ethereum-node-access');
@@ -631,6 +687,17 @@ var ModuleControllers = class {
 				
 					resolve(res);
 				}
+			})
+			.then(res => {
+				// fixing missing callback call when data == null
+				// in EthereumNodeAccess.readEthereumTransactionObject
+				if (res)
+					return res;
+				else
+					throw new Error('no transaction found with hash ' + txhash);
+			})
+			.catch(err => {
+				reject(err);
 			});
 		});
 		
@@ -639,9 +706,30 @@ var ModuleControllers = class {
 		
 	}
 	
+	async getEthereumTransactionReceipt(session, txhash) {
+		var global = this.global;
+
+		var ethnodemodule = global.getModuleObject('ethnode');
+		
+		var EthereumNodeAccess = ethnodemodule.getEthereumNodeAccessInstance(session);
+
+		const result = new Promise((resolve, reject) => { 
+			EthereumNodeAccess.web3_getTransactionReceipt(txhash, (err, res) => {
+				if (err) reject(err); else resolve(res);
+			})
+			.catch(err => reject(err));
+		});
+		
+		return result;
+
+		
+	}
+	
+	//
 	//
 	// Web 3 (ethchainreader)
 	//
+
 	async readCurrentBlockNumber(session) {
 		var global = this.global;
 		
@@ -652,13 +740,14 @@ var ModuleControllers = class {
 		const result = new Promise((resolve, reject) => { 
 			chainreaderinterface.getCurrentBlockNumber((err, res) => {
 				if (err) reject(err); else resolve(res);
-			});
+			})
+			.catch(err => reject(err));
 		});
 		
 		return result;
 	}
 	
-	async readBlock(session, txhash) {
+	async readBlock(session, blocknumber) {
 		var global = this.global;
 		
 		var ethchainreadermodule = global.getModuleObject('ethchainreader');
@@ -668,12 +757,13 @@ var ModuleControllers = class {
 		const result = new Promise((resolve, reject) => { 
 			chainreaderinterface.getBlock(blocknumber, (err, res) => {
 				if (err) reject(err); else resolve(res);
-			});
+			})
+			.catch(err => reject(err));
 		});
 		
 		return result;
 	}
-	
+
 	async readTransaction(session, txhash) {
 		var global = this.global;
 		
@@ -691,14 +781,109 @@ var ModuleControllers = class {
 				
 					resolve(res);
 				}
+			})			
+			.then(res => {
+				// fixing missing callback calls when data == null
+				// because of error read property of null in Transaction._createTransactionObject
+				if (res)
+					return res;
+				else
+					throw new Error('no transaction found with hash ' + txhash);
+			})
+			.catch(err => {
+				reject(err);
 			});
 		});
 		
 		return result;
 	}
+
+	async readLatestTransactions(session) {
+		var global = this.global;
+
+		var ethchainreadermodule = global.getModuleObject('ethchainreader');
+		
+		var chainreaderinterface = ethchainreadermodule.getChainReaderInterface(session);
+		
+		const result = new Promise((resolve, reject) => { 
+			chainreaderinterface.getLatestTransactions((err, res) => {
+				if (err) reject(err); else	resolve(res);
+			})
+			.catch(err => reject(err));
+		});
+		
+		return result;
+	}
 	
+	async readBlockTransactions(session, blocknumber) {
+		var global = this.global;
+
+		var ethchainreadermodule = global.getModuleObject('ethchainreader');
+
+		var block = await this.readBlock(session, blocknumber);
+		
+		const result = new Promise((resolve, reject) => { 
+			block.getTransactions((err, res) => {
+				if (err) reject(err); else	resolve(res);
+			})
+			.catch(err => reject(err));			
+		});
+		
+		return result;
+	}
 	
-	
+	async readAccount(session, address) {
+		var global = this.global;
+		
+		var ethchainreadermodule = global.getModuleObject('ethchainreader');
+		
+		var chainreaderinterface = ethchainreadermodule.getChainReaderInterface(session);
+
+		const result = new Promise((resolve, reject) => { 
+			chainreaderinterface.getAccount(address,(err, res) => {
+				if (err) reject(err); else resolve(res);
+			})
+			.catch(err => reject(err));
+		});
+		
+		return result;
+	}
+
+	async readContract(session, address, abi) {
+		var global = this.global;
+		
+		var ethchainreadermodule = global.getModuleObject('ethchainreader');
+		
+		var chainreaderinterface = ethchainreadermodule.getChainReaderInterface(session);
+
+		var contract;
+		
+		const result = new Promise((resolve, reject) => { 
+			chainreaderinterface.getContract(address,(err, res) => {
+				if (err) reject(err); else resolve(res);
+			})
+			.catch(err => reject(err));
+		})
+		.then(res => {
+			contract = res;
+
+			if (abi) {
+				contract.setAbi(abi);
+
+				return contract._getInstance();
+			}
+			else {
+				return contract;
+			}
+
+		})
+		.then(() => {
+			return contract;
+		});
+		
+		return result;
+	}
+
 	//
 	// ERC20
 	//
@@ -766,7 +951,7 @@ var ModuleControllers = class {
 		console.log("deployed contract completely retrieved");
 
 		// save erc20token
-		const result = await erc20tokencontrollers.saveERC20TokenObject(session, contract);
+		const result = await erc20tokencontrollers.saveERC20TokenObject(session, contract); // in fact does not return a promise
 		
 		console.log("erc20 token saved");
 
@@ -782,7 +967,7 @@ var ModuleControllers = class {
 		const result = new Promise((resolve, reject) => { 
 			erc20tokenmodule.getERC20Tokens(session, bRefresh, (err, res) => {
 				if (err) reject(err); else resolve(res);
-			});
+			}); // does not return a promise
 		});
 		
 		return result;
@@ -795,8 +980,17 @@ var ModuleControllers = class {
 		var commonmodule = global.getModuleObject('common');
 		
 		var ethnodemodule = global.getModuleObject('ethnode');
+		var currentproviderurl = this.getWeb3ProviderUrl(session);
+		var changedprovider = false;
+
+		if (!providerurl && !currentproviderurl)
+			throw new Error('missing a web3 url');
+
 		
-		const setweb3provider = await this.setWeb3ProviderUrl(session, providerurl);
+		if ((providerurl) && (providerurl != currentproviderurl)) {
+			await this.setWeb3ProviderUrl(session, providerurl);
+			changedprovider = true;
+		}
 		
 		var ethereumnodeaccess = ethnodemodule.getEthereumNodeAccessInstance(session);
 		
@@ -818,6 +1012,10 @@ var ModuleControllers = class {
 		});
 		
 		console.log('balance position for ' + address + ' is: ' + balance);
+
+		if (changedprovider) {
+			await this.setWeb3ProviderUrl(session, currentproviderurl);
+		}
 		
 		return balance;
 	}
@@ -830,6 +1028,18 @@ var ModuleControllers = class {
 
 		// import erc20 token contract
 		var erc20tokencontract = this.importERC20Token(session, tokenaddress);
+
+		if (providerurl) {
+			erc20tokencontract.setWeb3ProviderUrl(providerurl);
+		}
+		else {
+			var currentproviderURL = this.getWeb3ProviderUrl(session);
+			
+			if (currentproviderURL)
+				erc20tokencontract.setWeb3ProviderUrl(currentproviderURL);
+			else
+				throw new Error('missing a web3 url');
+		}
 		
 		
 		if (erc20tokencontract) {
@@ -945,6 +1155,7 @@ var ModuleControllers = class {
 	//
 	// authkey
 	//
+
 	async authenticate(session, username, password) {
 		var global = this.global;
 		
@@ -957,6 +1168,7 @@ var ModuleControllers = class {
 	//
 	// Wallet
 	//
+
 	async getSchemeList(session, bRefresh) {
 		var global = this.global;
 		
@@ -1273,28 +1485,6 @@ var ModuleControllers = class {
 		var walletmodule = global.getModuleObject('wallet');
 
 		return walletmodule.getWalletCardAsContact(session, wallet, card);
-	}
-	
-	// transactions
-	async getTransactionList(session, bRefresh) {
-		var global = this.global;
-		
-		/*var walletmodule = global.getModuleObject('wallet');
-
-		return walletmodule.getTransactionList(session, bRefresh);*/
-
-		var ethnodemodule = global.getModuleObject('ethnode');
-
-		if (bRefresh !== undefined)
-		console.log('getTransactionList: refresh parameter is not taken into account');
-
-		const result = new Promise((resolve, reject) => { 
-			ethnodemodule.getTransactionList(session, (err, res) => {
-				if (err) reject(err); else resolve(res);
-			});
-		});
-
-		return result;
 	}
 	
 	//

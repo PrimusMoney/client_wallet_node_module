@@ -68,6 +68,11 @@ class ReactNativeLoad {
 				rootscriptloader.signalEvent('@primusmoney/on_primus_client_wallet_module_ready');
 			});
 			
+			// end of modules load
+			rootscriptloader.registerEventListener('@primusmoney/on_primus_client_wallet_module_ready', function(eventname) {
+				if (callback)
+					callback(null, self);
+			});
 			
 		}
 		catch(e) {

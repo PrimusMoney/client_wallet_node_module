@@ -130,6 +130,16 @@ class Client_Wallet {
 		return require('./js/control/controllers.js').getObject();
 	}
 
+	getClientAPI() {
+		var global = this.getGlobalObject();
+
+		var clientsmodule = global.getModuleObject('clientmodules');
+
+		var clientapicontrollers = clientsmodule.getControllersObject();
+
+		return clientapicontrollers;
+	}
+	
 	// static methods
 	static getObject() {
 		if (client_wallet)

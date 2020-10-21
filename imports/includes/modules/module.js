@@ -6,7 +6,7 @@
 class ClientModules {
 	constructor() {
 		this.name = 'clientmodules';
-		this.current_version = "0.14.7.2020.10.15";
+		this.current_version = "0.14.8.2020.10.21";
 		
 		this.global = null; // put by global on registration
 		this.isready = false;
@@ -36,10 +36,24 @@ class ClientModules {
 		this.isloading = true;
 
 		var self = this;
+		var global = this.global;
 
-		var modulescriptloader = parentscriptloader.getChildLoader('clientmodulesloader');
+		// clients module script loader
+		var modulescriptloader;
+		
+		// look if clientmodulesloader already created (e.g. for loading in node.js)
+		modulescriptloader = global.findScriptLoader('clientmodulesloader');
 
-		modulescriptloader.load_scripts(function() { self.init(); if (callback) callback(null, self); });
+		// if not, create on as child as parent script loader passed in argument
+		if (!modulescriptloader)
+		modulescriptloader = parentscriptloader.getChildLoader('clientmodulesloader');
+
+		var xtraroot = './includes';
+		var moduleroot = xtraroot + '/modules';
+
+		modulescriptloader.push_script( moduleroot + '/control/controllers.js');
+
+		modulescriptloader.load_scripts(function() { self.init(); if (callback) callback(null, self);});
 
 		return modulescriptloader;	
 	}
@@ -66,6 +80,10 @@ class ClientModules {
 		global.registerHook('isSessionAnonymous_hook', this.name, this.isSessionAnonymous_hook);
 		global.modifyHookPriority('isSessionAnonymous_hook', this.name, 5);
 
+		
+		// signal module is ready
+		var rootscriptloader = global.getRootScriptLoader();
+		rootscriptloader.signalEvent('on_clientmodules_module_ready');
 	}
 	
 	postRegisterModule() {
@@ -739,9 +757,31 @@ class ClientModules {
 			return false;
 	}
 	
+	_getXMLHttpRequestClass() {
+		if (typeof XMLHttpRequest !== 'undefined' && XMLHttpRequest ) {
+			return XMLHttpRequest;
+		}
+		else if (typeof window !== 'undefined' && window ) {
+			// normally (browser or react native), XMLHttpRequest should be directly accessible
+			if (typeof window.XMLHttpRequest !== 'undefined')
+				return window.XMLHttpRequest;
+			else if ( (typeof window.simplestore !== 'undefined')
+					&& (typeof window.simplestore.XMLHttpRequest !== 'undefined'))
+					return window.simplestore.XMLHttpRequest;
+		}
+		else if ((typeof global !== 'undefined') && (typeof global.simplestore !== 'undefined')
+				&& (typeof global.simplestore.XMLHttpRequest !== 'undefined')) {
+			return global.simplestore.XMLHttpRequest;
+		}
+		else {
+			throw 'can not find XMLHttpRequest class!!!';
+		}
+	}
+	
 	http_get_json(session, configurl) {
 		return new Promise((resolve, reject) => {
-			var xhttp = new XMLHttpRequest();
+			var _XMLHttpRequest = this._getXMLHttpRequestClass()
+			var xhttp = new _XMLHttpRequest();
 			
 			xhttp.open('GET', configurl, true);
 			

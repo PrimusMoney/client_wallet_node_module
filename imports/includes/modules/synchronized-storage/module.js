@@ -47,8 +47,15 @@ var Module = class {
 		var self = this;
 		var global = this.global;
 
-		// authkey
-		var modulescriptloader = global.getScriptLoader('synchronizedmoduleloader', parentscriptloader);
+		// wallet module script loader
+		var modulescriptloader;
+		
+		// look if synchronizedmoduleloader already created (e.g. for loading in node.js)
+		modulescriptloader = global.findScriptLoader('synchronizedmoduleloader');
+
+		// if not, create on as child as parent script loader passed in argument
+		if (!modulescriptloader)
+		modulescriptloader = global.getScriptLoader('synchronizedmoduleloader', parentscriptloader);
 		
 		
 		var xtraroot = './includes';
@@ -76,7 +83,9 @@ var Module = class {
 		
 		var global = this.global;
 		
-		
+		// signal module is ready
+		var rootscriptloader = global.getRootScriptLoader();
+		rootscriptloader.signalEvent('on_synchronized-storage_module_ready');
 	}
 	
 	postRegisterModule() {
