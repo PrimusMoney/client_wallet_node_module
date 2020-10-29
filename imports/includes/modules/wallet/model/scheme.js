@@ -363,6 +363,9 @@ var Scheme = class {
 	}
 	
 	cloneOnWeb3ProviderUrl(url, callback) {
+		var walletmodule = this.module;
+		var Scheme = walletmodule.Scheme;
+
 		var networkconfig = this.getNetworkConfig();
 		
 		var clonedscheme = new Scheme(this.module, this.session, networkconfig.restserver, networkconfig.authserver, networkconfig.keyserver, networkconfig.ethnodeserver);
@@ -435,6 +438,8 @@ var Scheme = class {
 	
 	// static methods
 	static readFromJson(walletmodule, session, schemejson) {
+		var Scheme = walletmodule.Scheme;
+
 		var restserver = schemejson.restserver;
 		var authserver = schemejson.authserver;
 		var keyserver = schemejson.keyserver;

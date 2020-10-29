@@ -446,6 +446,9 @@ var Module = class {
 			}
 		})
 		.then(() => {
+			if (callback)
+				callback(null, wallet);
+				
 			return wallet;
 		})
 		.catch(err => {
@@ -573,10 +576,11 @@ var Module = class {
 		return createvaultpromise
 		.then((wllt) => {
 			wallet = wllt
-			// save wallet
+			
 			return wallet.unlock(password);
 		})
 		.then(() => {
+			// save wallet
 			return wallet.save();
 		})
 		.then(() => {

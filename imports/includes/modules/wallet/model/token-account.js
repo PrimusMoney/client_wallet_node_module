@@ -421,6 +421,10 @@ var TokenAccount = class {
 	
 	// static methods
 	static readFromJson(card, token, tokenaccountjson) {
+		var wallet = card.wallet;
+		var walletmodule = wallet.module;
+		var TokenAccount = walletmodule.TokenAccount;
+		
 		var tokenaccount = new TokenAccount(card, token);
 		
 		tokenaccount.uuid = tokenaccountjson.uuid;

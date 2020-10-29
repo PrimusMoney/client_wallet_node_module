@@ -35,6 +35,7 @@ var LocalStorage = class {
 		var syncstoragemodule = this.global.getModuleObject('synchronized-storage')
 		
 		var LocalStorage = syncstoragemodule.CommonLocalStorage;
+		var StorageLocks = syncstoragemodule.StorageLocks;
 		
 		this.localStorage = new LocalStorage(session);
 		this.clientStorage = session.getClientStorageAccessInstance();
@@ -205,16 +206,19 @@ var LocalStorage = class {
 }
 
 if ( typeof GlobalClass !== 'undefined' && GlobalClass ) {
+	GlobalClass.registerModuleClass('synchronized-storage', 'StorageLocks', StorageLocks);
 	GlobalClass.registerModuleClass('synchronized-storage', 'LocalStorage', LocalStorage);
 }
 else if (typeof window !== 'undefined') {
 	let _GlobalClass = ( window && window.simplestore && window.simplestore.Global ? window.simplestore.Global : null);
 	
+	_GlobalClass.registerModuleClass('synchronized-storage', 'StorageLocks', StorageLocks);
 	_GlobalClass.registerModuleClass('synchronized-storage', 'LocalStorage', LocalStorage);
 }
 else if (typeof global !== 'undefined') {
 	// we are in node js
 	let _GlobalClass = ( global && global.simplestore && global.simplestore.Global ? global.simplestore.Global : null);
 	
+	_GlobalClass.registerModuleClass('synchronized-storage', 'StorageLocks', StorageLocks);
 	_GlobalClass.registerModuleClass('synchronized-storage', 'LocalStorage', LocalStorage);
 }

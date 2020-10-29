@@ -180,6 +180,8 @@ var Contact = class {
 	
 	// static methods
 	static readFromJson(walletmodule, session, contactjson) {
+		var Contact = walletmodule.Contact;
+		
 		var name = contactjson.name;
 		var type = contactjson.type;
 		

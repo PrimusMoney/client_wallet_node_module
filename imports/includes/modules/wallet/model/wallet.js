@@ -1935,11 +1935,12 @@ var Wallet = class {
 		return uuid.replace(/-/g, '.');
 	}
 
-	static readFromJson(module, session, walletjson) {
+	static readFromJson(walletmodule, session, walletjson) {
+		var Wallet = walletmodule.Wallet;
 		var authname = walletjson.authname;
 		var type = walletjson.type;
 		
-		var wallet = new Wallet(module, session, authname, type);
+		var wallet = new Wallet(walletmodule, session, authname, type);
 		
 		wallet.uuid = walletjson.uuid;
 		wallet.label = walletjson.label;

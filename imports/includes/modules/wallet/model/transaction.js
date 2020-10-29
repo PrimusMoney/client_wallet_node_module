@@ -296,6 +296,7 @@ var Transaction = class {
 	
 	// static methods
 	static readFromJson(walletmodule, session, transactionjson) {
+		var Transaction = walletmodule.Transaction;
 		var transactionhash = transactionjson.transactionhash;
 
 		var transaction = new Transaction(walletmodule, session, transactionhash);

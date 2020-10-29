@@ -10,9 +10,9 @@ var ModuleControllers = class {
 		this.global = module.global;
 	}
 
-	//
-	// Client
-	//
+	/***********************/
+	/*      Client         */
+	/***********************/
 	
 	getClientVersion() {
 		var global = this.global;
@@ -90,26 +90,6 @@ var ModuleControllers = class {
 		return childsession;
 	}
 	
-	async isSessionAnonymous(session) {
-		var global = this.global;
-		
-		var commonmodule = global.getModuleObject('common');
-		
-		const result = new Promise((resolve, reject) => {
-			try {
-				var res = session.isAnonymous();
-				
-				resolve(res);
-			}
-			catch(e) {
-				reject(e);
-			}
-		});
-		
-		return result;
-		
-	}
-	
 	async setSessionNetworkConfig(session, networkconfig) {
 		var global = this.global;
 		
@@ -168,6 +148,81 @@ var ModuleControllers = class {
 		
 		return clientmodules.getParentSessionObject(session);
 	}
+
+	//
+	// user
+	//
+
+	isValidEmail(session, emailaddress) {
+		var global = this.global;
+		var clientmodules = global.getModuleObject('clientmodules');
+
+		return clientmodules.isValidEmail(session, emailaddress);
+	}
+	
+	http_get_json(session, url) {
+		var global = this.global;
+		var clientmodules = global.getModuleObject('clientmodules');
+
+		return clientmodules.http_get_json(session, url);
+	}
+
+	//
+	// vault
+	//
+
+	impersonateVault(session, vault) {
+		if (!vault)
+			return false;
+		
+		var global = this.global;
+		var clientmodules = global.getModuleObject('clientmodules');
+
+		return clientmodules.impersonateVault(session, vault);
+	}
+	
+	//
+	// authkey
+	//
+
+	async authenticate(session, username, password) {
+		var global = this.global;
+		
+		var clientmodules = global.getModuleObject('clientmodules');
+
+		return clientmodules.authenticate(session, username, password);
+	}
+	
+	
+
+
+	/***********************/
+	/*   common module     */
+	/***********************/
+	
+	//
+	// session
+	//
+
+	async isSessionAnonymous(session) {
+		var global = this.global;
+		
+		var commonmodule = global.getModuleObject('common');
+		
+		const result = new Promise((resolve, reject) => {
+			try {
+				var res = session.isAnonymous();
+				
+				resolve(res);
+			}
+			catch(e) {
+				reject(e);
+			}
+		});
+		
+		return result;
+		
+	}
 	
 	//
 	// user
@@ -190,20 +245,6 @@ var ModuleControllers = class {
 		}
 		
 		return userinfo;
-	}
-	
-	isValidEmail(session, emailaddress) {
-		var global = this.global;
-		var clientmodules = global.getModuleObject('clientmodules');
-
-		return clientmodules.isValidEmail(session, emailaddress);
-	}
-	
-	http_get_json(session, url) {
-		var global = this.global;
-		var clientmodules = global.getModuleObject('clientmodules');
-
-		return clientmodules.http_get_json(session, url);
 	}
 	
 	
@@ -303,16 +344,6 @@ var ModuleControllers = class {
 		return result;
 	}
 	
-	impersonateVault(session, vault) {
-		if (!vault)
-			return false;
-		
-		var global = this.global;
-		var clientmodules = global.getModuleObject('clientmodules');
-
-		return clientmodules.impersonateVault(session, vault);
-	}
-	
 	async connectVault(session, vaultname, passphrase) {
 		const vault = await this.openVault(session, vaultname, passphrase);
 		
@@ -391,6 +422,17 @@ var ModuleControllers = class {
 		return result;
 	}
 	
+	async getAccountObjectFromUUID(session, accountuuid) {
+		var global = this.global;
+		
+		var commonmodule = global.getModuleObject('common');
+		var commoncontrollers = commonmodule.getControllersObject();
+		
+		var account = commoncontrollers.getAccountObjectFromUUID(session, accountuuid);
+		
+		return account;
+	}
+	
 	createBlankAccountObject(session) {
 		var global = this.global;
 
@@ -465,10 +507,11 @@ var ModuleControllers = class {
 		
 		return result;
 	}
+
 	
-	//
-	// Web 3 (ethnode)
-	//
+	/***********************/
+	/*   Web3 (ethnode)    */
+	/***********************/
 	
 	 getWeb3ProviderUrl(session) {
 		var global = this.global;
@@ -497,9 +540,6 @@ var ModuleControllers = class {
 	async getNodeInfo(session) {
 		var global = this.global;
 		
-		var mobileconfigmodule = global.getModuleObject('mobileconfig');
-		
-
 		var ethnodemodule = global.getModuleObject('ethnode');
 
 		var ethereumnodeaccess = ethnodemodule.getEthereumNodeAccessInstance(session);
@@ -555,25 +595,12 @@ var ModuleControllers = class {
 	async getEthAddressBalance(session, address) {
 		var global = this.global;
 		
-		var commonmodule = global.getModuleObject('common');
-
 		var account = this.createAccountObject(session, address);
 		
 		return this.getEthAccountBalance(session, account);
 	}
 	
 	// using accounts
-	async getEthAccountFromUUID(session, accountuuid) {
-		var global = this.global;
-		
-		var commonmodule = global.getModuleObject('common');
-		var commoncontrollers = commonmodule.getControllersObject();
-		
-		var account = commoncontrollers.getAccountObjectFromUUID(session, accountuuid);
-		
-		return account;
-	}
-	
 	async getEthAccountBalance(session, account) {
 		var global = this.global;
 
@@ -651,15 +678,27 @@ var ModuleControllers = class {
 		return result;
 	}
 
-	async _getEthNodeTransactionObjectFromHash(session, txhash) {
-		throw new Error('not implemented, should create a transaction object from ethereum transaction');
+	async _getEthNodeTransactionObjectFromHash(session, txhash, callback) {
+		var global = this.global;
+		
+		var ethnodemodule = global.getModuleObject('ethnode');
+
+		var transactionuuid = session.guid();
+		
+		var transaction = new ethnodemodule.Transaction(session, transactionuuid);
+
+		transaction.setTransactionHash(txhash);
+
+		if (callback)
+			callback(null, transaction);
+
+		return transaction;
 	}
 	
 	async getTransaction(session, txhash) {
 		var global = this.global;
 		
 		var ethnodemodule = global.getModuleObject('ethnode');
-
 
 		const result = new Promise((resolve, reject) => { 
 			//ethnodemodule.getTransactionObjectFromHash(session, txhash, (err, res) => {
@@ -670,6 +709,16 @@ var ModuleControllers = class {
 		});
 
 		return result;
+	}
+
+	async decodedDataToUTF8(session, data) {
+		var global = this.global;
+
+		var ethereumnodeaccessmodule = global.getModuleObject('ethereum-node-access');
+
+		var data_decoded_utf8 = ethereumnodeaccessmodule.web3ToUTF8(session, data);
+
+		return data_decoded_utf8;
 	}
 	
 	async getEthereumTransaction(session, txhash) {
@@ -725,10 +774,9 @@ var ModuleControllers = class {
 		
 	}
 	
-	//
-	//
-	// Web 3 (ethchainreader)
-	//
+	/***************************/
+	/*  Web3 (ethchainreader)  */
+	/***************************/
 
 	async readCurrentBlockNumber(session) {
 		var global = this.global;
@@ -884,9 +932,9 @@ var ModuleControllers = class {
 		return result;
 	}
 
-	//
-	// ERC20
-	//
+	/***********************/
+	/*      ERC20          */
+	/***********************/
 	
 	importERC20Token(session, tokenaddress) {
 		var global = this.global;
@@ -951,12 +999,20 @@ var ModuleControllers = class {
 		console.log("deployed contract completely retrieved");
 
 		// save erc20token
-		const result = await erc20tokencontrollers.saveERC20TokenObject(session, contract); // in fact does not return a promise
-		
-		console.log("erc20 token saved");
+		return new Promise((resolve, reject) => { 
+			// note: saveERC20TokenObject does not return a promise
+			erc20tokencontrollers.saveERC20TokenObject(session, contract, (err, res) => {
 
-
-		return result;
+				if (err) {
+					console.log("error saving erc20 token: " + err);
+					reject(err); 
+				}
+				else {
+					console.log("erc20 token saved");
+					resolve(contract);
+				}
+			});
+		});
 	}
 	
 	async getERC20TokenList(session, bRefresh) {
@@ -977,8 +1033,6 @@ var ModuleControllers = class {
 		var global = this.global;
 		var self = this;
 
-		var commonmodule = global.getModuleObject('common');
-		
 		var ethnodemodule = global.getModuleObject('ethnode');
 		var currentproviderurl = this.getWeb3ProviderUrl(session);
 		var changedprovider = false;
@@ -1023,7 +1077,6 @@ var ModuleControllers = class {
 	async sendERC20Tokens(session, providerurl, tokenaddress, senderprivatekey, recipientaddress, fee) {
 		var global = this.global;
 
-		var commonmodule = global.getModuleObject('common');
 		var ethnodemodule = global.getModuleObject('ethnode');
 
 		// import erc20 token contract
@@ -1086,6 +1139,10 @@ var ModuleControllers = class {
 	}		
 
 	
+	/***********************/
+	/*      common         */
+	/***********************/
+
 	//
 	// cryptokey
 	// 
@@ -1152,21 +1209,13 @@ var ModuleControllers = class {
 		return recipientaccount.rsaDecryptString(cyphertext, senderaccount);
 	}
 	
-	//
-	// authkey
-	//
-
-	async authenticate(session, username, password) {
-		var global = this.global;
-		
-		var clientmodules = global.getModuleObject('clientmodules');
-
-		return clientmodules.authenticate(session, username, password);
-	}
 	
-	
+	/***********************/
+	/*      Wallet         */
+	/***********************/
+
 	//
-	// Wallet
+	// Schemes
 	//
 
 	async getSchemeList(session, bRefresh) {
@@ -1487,9 +1536,9 @@ var ModuleControllers = class {
 		return walletmodule.getWalletCardAsContact(session, wallet, card);
 	}
 	
-	//
-	// MyTokens
-	//
+	/***********************/
+	/*    MyTokens         */
+	/***********************/
 	
 	async getPublicSchemeList(session, bRefresh) {
 		var global = this.global;
@@ -1500,6 +1549,10 @@ var ModuleControllers = class {
 	}
 	
 	
+	/***********************/
+	/*     static          */
+	/***********************/
+
 	// static
 	static getObject() {
 		if (modulecontrollers)

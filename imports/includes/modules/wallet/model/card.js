@@ -1312,6 +1312,9 @@ var Card = class {
 	
 	// static methods
 	static readFromJson(wallet, scheme, cardjson) {
+		var walletmodule = wallet.module;
+		var Card = walletmodule.Card;
+
 		var authname = cardjson.authname;
 		var address = cardjson.address;
 		var password = cardjson.password;
