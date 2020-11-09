@@ -21,6 +21,12 @@ var ModuleControllers = class {
 
 		return clientmodules.current_version;
 	}
+
+	getModulesVersionInfo() {
+		var global = this.global;
+
+		return global.getVersionInfo();
+	}
 	
 	//
 	// Settings
@@ -1185,7 +1191,7 @@ var ModuleControllers = class {
 		return keys;
 	}
 	
-	
+	// symetric
 	aesEncryptString(session, privatekey, plaintext) {
 		var cryptokey = session.createBlankCryptoKeyObject();
 		cryptokey.setPrivateKey(privatekey);
@@ -1201,6 +1207,21 @@ var ModuleControllers = class {
 		return cryptokey.aesDecryptString(cyphertext);
 	}
 	
+	signString(session, privatekey, plaintext) {
+		var cryptokey = session.createBlankCryptoKeyObject();
+		cryptokey.setPrivateKey(privatekey);
+
+		return cryptokey.signString(plaintext);
+	}
+
+	validateStringSignature(session, address, plaintext, signature) {
+		var cryptokey = session.createBlankCryptoKeyObject();
+		cryptokey.setAddress(address);
+
+		return cryptokey.validateStringSignature(plaintext, signature);
+	}
+	
+	// asymetric
 	rsaEncryptString(senderaccount, recipientaccount, plaintext) {
 		return senderaccount.rsaEncryptString(plaintext, recipientaccount);
 	}
@@ -1483,6 +1504,9 @@ var ModuleControllers = class {
 	async getContact(session, name) {
 		var global = this.global;
 		
+		if (!name)
+		throw new Error('name is undefined');
+		
 		var walletmodule = global.getModuleObject('wallet');
 
 		return walletmodule.getContact(session, name);
@@ -1491,6 +1515,9 @@ var ModuleControllers = class {
 	async getContactFromUUID(session, contactuuid) {
 		var global = this.global;
 		
+		if (!contactuuid)
+		throw new Error('contact uuid is undefined');
+		
 		var walletmodule = global.getModuleObject('wallet');
 
 		return walletmodule.getContactFromUUID(session, contactuuid);
@@ -1498,6 +1525,9 @@ var ModuleControllers = class {
 	
 	async getContactFromEmail(session, email) {
 		var global = this.global;
+
+		if (!email)
+		throw new Error('email is undefined');
 		
 		var walletmodule = global.getModuleObject('wallet');
 

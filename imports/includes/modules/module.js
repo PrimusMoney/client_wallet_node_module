@@ -6,7 +6,7 @@
 class ClientModules {
 	constructor() {
 		this.name = 'clientmodules';
-		this.current_version = "0.14.8.2020.10.21";
+		this.current_version = "0.20.0.2020.11.12";
 		
 		this.global = null; // put by global on registration
 		this.isready = false;
@@ -116,7 +116,7 @@ class ClientModules {
 		
 		var versioninfo = {};
 		
-		versioninfo.label = global.t('mobile client');
+		versioninfo.label = global.t('client modules');
 		versioninfo.value = (mobile_versioninfo ? mobile_versioninfo : global.t('unknown'));
 		
 		versioninfos.push(versioninfo);
@@ -353,32 +353,70 @@ class ClientModules {
 	
 	authenticate(session, username, password, callback) {
 		var global = this.global;
-		
-		var authkeymodule = global.getModuleObject('authkey');
 
-		if (!authkeymodule.isActivated())
-			throw new Error('authkey module is not activated');
+		if (!session)
+		return Promise.reject('no session passed in argument')
 		
-		return new Promise((resolve, reject) => { 
-			authkeymodule._authenticate(session, username, password, (err, res) => {
-				if (err) reject(err); else resolve(res);
+		var islocalsession = ((!session.authkey_server_access_instance) || (!session.authkey_server_access_instance._isReady()) ? true : false);
+
+		if (islocalsession) {
+			// we use vaults local vault
+			var vaulttype = 0;
+
+			var commonmodule = global.getModuleObject('common');
+		
+			return new Promise((resolve, reject) => { 
+				commonmodule.openVault(session, username, password, vaulttype, (err, res) => {
+					if (err) reject(err); else resolve(res);
+				}); //  does not return a promise
+			})			
+			.then((vault) => {
+				// impersonate
+				return this.impersonateVaultAsync(session, vault);
+			})
+			.then((res) => {
+				if (callback)
+					callback(null, session);
+				
+				return session;
 			})
 			.catch(err => {
-				reject(err);
-			});
-		})
-		.then((res) => {
-			if (callback)
-				callback(null, res);
+				if (callback)
+					callback('ERR_SESSION_NOT_AUTHENTICATED', null);
 			
-			return res;
-		})
-		.catch(err => {
-			if (callback)
-				callback('ERR_SESSION_NOT_AUTHENTICATED', null);
-		
-			throw new Error('ERR_SESSION_NOT_AUTHENTICATED');
-		});
+				throw new Error('ERR_SESSION_NOT_AUTHENTICATED');
+			});
+	
+
+		}
+		else {
+			var authkeymodule = global.getModuleObject('authkey');
+
+			if (!authkeymodule.isActivated())
+				throw new Error('authkey module is not activated');
+			
+			return new Promise((resolve, reject) => { 
+				authkeymodule._authenticate(session, username, password, (err, res) => {
+					if (err) reject(err); else resolve(res);
+				})
+				.catch(err => {
+					reject(err);
+				});
+			})
+			.then((res) => {
+				if (callback)
+					callback(null, session);
+				
+				return session;
+			})
+			.catch(err => {
+				if (callback)
+					callback('ERR_SESSION_NOT_AUTHENTICATED', null);
+			
+				throw new Error('ERR_SESSION_NOT_AUTHENTICATED');
+			});
+		}
+
 	}
 
 	
@@ -632,7 +670,35 @@ class ClientModules {
 			else {
 				session.activate_authkey_server_access = false;
 			}
-			
+
+			// oauth2
+			session.activate_oauth2_server_access = false;
+
+			if (session.activate_authkey_server_access !== false) {
+				if (network.authserver && network.authserver.mode && (network.authserver.mode == 'oauth2')) {
+					var oauth2module = global.getModuleObject('oauth2');
+	
+					if (!oauth2module.isActivated())
+						throw new Error('oauth2 module is not activated');
+	
+					session.activate_oauth2_server_access = true;
+					
+					// fill rest connection
+					var oauth2_rest_server_url = network.authserver.rest_server_url;
+					var oauth2_rest_server_api_path = network.authserver.rest_server_api_path;
+					
+					if (oauth2_rest_server_url && oauth2_rest_server_api_path) {
+						var oauth2_provider = network.authserver.oauth2.provider;
+						var oauth2_server_access_instance = oauth2module.getOAuth2ServerAccessInstance(session, oauth2_provider);
+						var rest_oauth2_connection = session.createRestConnection(oauth2_rest_server_url, oauth2_rest_server_api_path);
+						
+						oauth2_server_access_instance.setRestOAuth2Connection(rest_oauth2_connection);
+					}
+	
+	
+				}
+			}
+				
 			return session;
 		})
 		.then(() => {

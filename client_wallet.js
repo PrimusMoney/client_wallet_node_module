@@ -25,6 +25,11 @@ class Client_Wallet {
 		this.primus_ethereum_xtra_web = PrimusMoney_ethereum_xtra_web.getObject();
 	}
 	
+	getVersion() {
+		var packagejson = require('./package.json');
+		return packagejson.version;
+	}
+	
 	async init(callback) {
 		console.log('@primusmoney/client_wallet init called');
 		
