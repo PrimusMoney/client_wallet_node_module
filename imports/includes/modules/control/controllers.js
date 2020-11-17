@@ -1378,6 +1378,35 @@ var ModuleControllers = class {
 		return walletmodule.createWallet(session, walletname, password, wallettype);
 	}
 	
+	async makeWallet(session, authname, schemeuuid) {
+		// we make client or remote wallets, depending on the scheme
+		var global = this.global;
+
+		var walletmodule = global.getModuleObject('wallet');
+		var Wallet = walletmodule.Wallet;
+
+		var scheme = await walletmodule.getSchemeFromUUID(session, schemeuuid);
+
+		if (!scheme)
+			throw new Error('could not find scheme');
+
+		var wallettype = scheme.getSchemeType();
+
+		var walletjson = {};
+		walletjson.authname = authname;
+		walletjson.type = wallettype;
+		walletjson.uuid = session.guid();;
+		walletjson.schemeuuid = schemeuuid;
+		walletjson.label = authname;
+
+		const wallet_new =  Wallet.readFromJson(walletmodule, session, walletjson);
+
+		if (wallet_new)
+			return wallet_new;
+		else
+			throw new Error('could not create wallet');
+	}
+	
 	async modifyWallet(session, walletuuid, walletinfo) {
 		var global = this.global;
 		
@@ -1565,6 +1594,70 @@ var ModuleControllers = class {
 
 		return walletmodule.getWalletCardAsContact(session, wallet, card);
 	}
+
+	async createWalletCardFromPrivateKey(session, wallet, web3providerurl, privatekey) {
+		
+		// create a session account
+		if (this.isValidPrivateKey(session, privatekey)) {
+			var sessionaccount = await this.getSessionAccountFromPrivateKey(session, wallet, privatekey);
+		}
+
+		if (!sessionaccount)
+			return Promise.reject('not a valid private key');
+
+
+		// get a scheme, or create one if necessary
+		var scheme;
+								
+		// get list of local schemes
+		var localschemes = await this.getLocalSchemeList(session, true);
+		var bCreateScheme = true;
+		
+		for (var i = 0; i < localschemes.length; i++) {
+			// compare with web3_provider_url to see if we have a scheme that matches
+			var networkconfig = localschemes[i].getNetworkConfig()
+			if (networkconfig.ethnodeserver.web3_provider_url == web3providerurl) {
+				bCreateScheme = false;
+				scheme = localschemes[i];
+				break;
+			}
+		}
+		
+		if (bCreateScheme) {
+			// else we create a local scheme and save it
+			var defaultlocalscheme = await _apicontrollers.getDefaultScheme(session, 0);
+			scheme = await defaultlocalscheme.cloneOnWeb3ProviderUrl(web3providerurl);
+		}
+		
+		if (!scheme)
+			return Promise.reject('could not retrieve a scheme for ' + web3providerurl);
+
+		var address = sessionaccount.getAddress();
+		var configurl = 'storage://scheme?uuid=' + scheme.getSchemeUUID();
+		var authname = null;
+		var password = null;
+		var options = {};
+
+		var card = await wallet.importCard(address, configurl, authname, password, options);
+
+		return card;
+	}
+
+
+	/***********************/
+	/*    OAuth2           */
+	/***********************/
+
+	async getOAuth2AuthorizeUrl(session, params) {
+		var global = this.global;
+		
+		var oauth2module = global.getModuleObject('oauth2');
+		var oauth2interface = oauth2module.getOAuth2Interface();
+		
+		return oauth2interface.getOAuth2AuthorizeUrl(session, params);
+	}
+	
+
 	
 	/***********************/
 	/*    MyTokens         */

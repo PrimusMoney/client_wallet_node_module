@@ -1078,43 +1078,90 @@ var Wallet = class {
 			break;
 				
 			case Wallet.REMOTE_WALLET: {
-				// for the moment, we only allow cards based on personal accounts
-				// registered within the remote user account
-				var scheme;
-
-				// retrieve network config
-				var creationpromise = walletmodule.getSchemeFromUUID(session, this.schemeuuid)
-				.then((schm) => {
-					// note scheme object
-					scheme = schm;
-					
-					// look to see if we have already a card with this address
-					return this.getFirstCardWithAddress(address)
-					.then((card) => {
-						return this._checkCardFromAddress(card, scheme);
+				if (!authname) {
+					// client card
+					var creationpromise = this.getSessionAccountObjects(true)
+					.then((sessionaccounts) => {
+						var sessionaccount;
+						
+						for (var i = 0; i < sessionaccounts.length; i++) {
+							var accountaddress = sessionaccounts[i].getAddress();
+							
+							if (session.areAddressesEqual(accountaddress, address)) {
+								sessionaccount = sessionaccounts[i];
+								return sessionaccount;
+							}
+						}
+						
+						if (!sessionaccount)
+						throw new Error('you need to provide an address corresponding to a session account');
 					})
-					.catch(err => {
-						// if not, we create one
-						return this.createCard(scheme, authname, password, address);
+					.then((sessionaccount) => {
+						if (configurl.startsWith('storage://')) {
+							var schemeuuid = configurl.substring(configurl.indexOf("=") + 1);
+							
+							return walletmodule.getSchemeFromUUID(session, schemeuuid);
+						}
+						else {
+							return walletmodule.importScheme(session, configurl);
+						}
+					})
+					.then((scheme) => {
+						if (scheme) {
+							// look to see if we have already a card with this address
+							return this.getFirstCardWithAddress(address)
+							.then((card) => {
+								return this._checkCardFromAddress(card, scheme);
+							})
+							.catch(err => {
+								// if not, we create one
+								return this.createCard(scheme, null, null, address);
+							});
+						}
+						else
+							throw new Error('could not import scheme');
 					});
-				})
-				.then((card) => {
-					if (options && (options.notokenimport === true)) {
-						return card;
-					}
-					else {
-						// import tokens
-						return card.importTokenAccounts()
-						.then(() => {
-							return card;
+				}
+				else {
+					// cards based on personal accounts
+					// registered within the remote user account
+					var scheme;
+
+					// retrieve network config
+					var creationpromise = walletmodule.getSchemeFromUUID(session, this.schemeuuid)
+					.then((schm) => {
+						// note scheme object
+						scheme = schm;
+						
+						// look to see if we have already a card with this address
+						return this.getFirstCardWithAddress(address)
+						.then((card) => {
+							return this._checkCardFromAddress(card, scheme);
 						})
 						.catch(err => {
-							return card;
+							// if not, we create one
+							return this.createCard(scheme, authname, password, address);
 						});
-					}
+					})
+					.then((card) => {
+						if (options && (options.notokenimport === true)) {
+							return card;
+						}
+						else {
+							// import tokens
+							return card.importTokenAccounts()
+							.then(() => {
+								return card;
+							})
+							.catch(err => {
+								return card;
+							});
+						}
 
 
-				});
+					});
+				}
+
 
 			}
 			break;
