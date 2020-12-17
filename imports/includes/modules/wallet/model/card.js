@@ -124,7 +124,7 @@ var Card = class {
 	getCardType() {
 		var scheme = this.scheme;
 		
-		if (scheme.activate_auth_server)
+		if (scheme.isRemote())
 			return Card.REMOTE_CARD
 		else
 			return Card.CLIENT_CARD;

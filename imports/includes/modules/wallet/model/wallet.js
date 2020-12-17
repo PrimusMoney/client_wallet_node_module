@@ -1246,7 +1246,7 @@ var Wallet = class {
 					_password = password
 				}
 				else {
-					if (scheme.activate_auth_server)
+					if (scheme.isRemote())
 						accountpromise = Promise.reject('creating a card for a remote scheme requires to provide the corresponding password');
 				}
 				break;

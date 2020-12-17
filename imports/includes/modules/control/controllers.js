@@ -1080,7 +1080,7 @@ var ModuleControllers = class {
 		return balance;
 	}
 	
-	async sendERC20Tokens(session, providerurl, tokenaddress, senderprivatekey, recipientaddress, fee) {
+	async sendERC20Tokens(session, providerurl, tokenaddress, senderprivatekey, recipientaddress, tokenamount, fee) {
 		var global = this.global;
 
 		var ethnodemodule = global.getModuleObject('ethnode');
@@ -1625,7 +1625,7 @@ var ModuleControllers = class {
 		
 		if (bCreateScheme) {
 			// else we create a local scheme and save it
-			var defaultlocalscheme = await _apicontrollers.getDefaultScheme(session, 0);
+			var defaultlocalscheme = await this.getDefaultScheme(session, 0);
 			scheme = await defaultlocalscheme.cloneOnWeb3ProviderUrl(web3providerurl);
 		}
 		
