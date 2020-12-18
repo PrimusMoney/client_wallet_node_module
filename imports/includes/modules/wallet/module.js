@@ -1254,7 +1254,7 @@ var Module = class {
 		.then((schemes) => {
 			for (var i = 0; i < (schemes ? schemes.length : 0); i++) {
 				var scheme = schemes[i];
-				var schemeweb3url = scheme.ethnode_web3_provider_url;
+				var schemeweb3url = scheme.getWeb3ProviderUrl();
 				
 				if (schemeweb3url == web3url) {
 					return scheme;

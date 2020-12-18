@@ -246,7 +246,7 @@ var Scheme = class {
 	}
 	
 	setWeb3ProviderUrl(web3providerurl) {
-		this.network.ethnode.web3_provider_url = web3providerurl;
+		this.network.ethnodeserver.web3_provider_url = web3providerurl;
 		//this.ethnode_web3_provider_url = web3providerurl;
 	}
 	
