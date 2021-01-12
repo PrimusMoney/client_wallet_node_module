@@ -457,7 +457,7 @@ var Scheme = class {
 		return Math.floor(units);
 	}
 	
-	getGasLimit() {
+	getGasLimit(level) {
 		var default_gas_limit = Scheme.DEFAULT_GAS_LIMIT;
 		var ethnodeserver = this.getEthNodeServerConfig();
 		
@@ -467,7 +467,7 @@ var Scheme = class {
 		return default_gas_limit;
 	}
 	
-	getGasPrice() {
+	getGasPrice(level) {
 		var default_gas_price = Scheme.DEFAULT_GAS_PRICE;
 		var ethnodeserver = this.getEthNodeServerConfig();
 		

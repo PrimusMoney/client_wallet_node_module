@@ -6,7 +6,7 @@
 class ClientModules {
 	constructor() {
 		this.name = 'clientmodules';
-		this.current_version = "0.20.4.2020.12.05";
+		this.current_version = "0.20.5.2021.01.15";
 		
 		this.global = null; // put by global on registration
 		this.isready = false;
@@ -596,6 +596,9 @@ class ClientModules {
 			return session;
 		})
 		.then((session) => {
+			// TODO: should be handled in setSessionNetworkConfig_asynchook of wallet module
+			// because this is specific to schemes
+			
 			// ethnode
 			var ethnodemodule = global.getModuleObject('ethnode');
 

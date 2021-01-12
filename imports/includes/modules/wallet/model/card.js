@@ -645,11 +645,12 @@ var Card = class {
 	}
 	
 	getTokenObject(tokenaddress) {
+		// Note: this returns an object created on the fly
+		// to get a persisted object, use getTokenFromAddress
+		
 		var global = this.global;
 		var Token = global.getModuleClass('wallet', 'Token');
-		
-		// TODO: look if we already have a token object for this address
-		
+
 		var scheme = this.scheme;
 		
 		var token = new Token(scheme, tokenaddress);
@@ -775,6 +776,44 @@ var Card = class {
 		});
 		
 	}
+
+	getTokenFromAddress(tokenaddress, callback) {
+		return this.getTokenList(true)
+		.then((tokenarray) => {
+			if (tokenarray) {
+				for (var i = 0; i < tokenarray.length; i++) {
+					var token = tokenarray[i];
+					var tkaddr = token.getTokenAddress();
+					
+					if ( tkaddr == tokenaddress ) {
+						// return first one, but there can
+						// be several tokens with same address
+						return token;
+					}
+				}
+				
+				return Promise.reject('not found', null);
+			} 
+			else {
+				return Promise.reject('could not retrieve token list', null);
+
+			}
+		})
+		.then((token) => {
+			if (callback)
+				callback(null, token);
+			
+			return token;
+		})
+		.catch(err => {
+			if (callback)
+				callback(err, null);
+			
+			throw err;
+		});
+
+	}
+
 	
 	getTokenFromUUID(tokenuuid, callback) {
 		return this.getTokenList(true)

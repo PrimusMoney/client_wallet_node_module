@@ -586,7 +586,7 @@ var ModuleControllers = class {
 				if (callback)
 					callback(null, nodeinfo);
 			})
-			.catch(err => reject(err));
+			.catch(err => {if (callback) callback(err, null);});
 		};
 
 		const result = new Promise((resolve, reject) => { 
@@ -1081,6 +1081,17 @@ var ModuleControllers = class {
 	}
 	
 	async sendERC20Tokens(session, providerurl, tokenaddress, senderprivatekey, recipientaddress, tokenamount, fee) {
+		if (!tokenaddress)
+			return Promise.reject('need a token address');
+
+		if (!recipientaddress)
+			return Promise.reject('need a recipient address');
+
+		if (!this.isValidPrivateKey(session, senderprivatekey))
+			return Promise.reject('need a valid private key');
+		
+		var txhash = null;
+	
 		var global = this.global;
 
 		var ethnodemodule = global.getModuleObject('ethnode');
@@ -1106,6 +1117,7 @@ var ModuleControllers = class {
 			var fromaccount = this.createAccountObject(session, null, senderprivatekey);
 			var toaccount = this.createAccountObject(session, recipientaddress);
 			var payingaccount = fromaccount;
+			let password = null; // no need since we have a private key
 			
 			var gaslimit = fee.gaslimit;
 			var gasPrice = fee.gasPrice;
@@ -1115,34 +1127,96 @@ var ModuleControllers = class {
 				const unlock = await ethnodemodule.unlockAccount(session, payingaccount, password, 300) // 300s, but we can relock the account
 				.catch((err) => {
 					console.log('error in locking account: ' + err);
-
-					return false;
 				});
+
+				if (!unlock)
+					return Promise.reject('could not unlock sending account');
 				
 				console.log('paying account ' + payingaccount.getAddress() + ' is now unlocked');
 				
-				const transfer = await erc20tokencontract.transfer(fromaccount, toaccount, tokenamount, payingaccount, gaslimit, gasPrice)
+				txhash = await erc20tokencontract.transfer(fromaccount, toaccount, tokenamount, payingaccount, gaslimit, gasPrice)
 				.catch((err) => {
 					console.log('error in token transfer: ' + err);
-
-					return false;
 				});
 				
 				
-				console.log('transfer transaction successful: ' + res);
-					
 				// relock account
 				ethnodemodule.lockAccount(session, payingaccount);
 	
 			}
 			catch(e) {
 				console.log('error in token transfer: ' + e);
-				return false;
 			}
 			
-			return true;
+			return txhash;
 		}
-	}		
+	}
+	
+	async transferERC20Tokens(session, providerurl, tokenaddress, tokenamount, ethtx) {
+		if (!tokenaddress)
+			return Promise.reject('need a token address');
+
+		if (!ethtx)
+			return Promise.reject('need a ethereum transaction definition');
+
+		var txhash = null;
+
+		var global = this.global;
+
+		var ethnodemodule = global.getModuleObject('ethnode');
+
+		// import erc20 token contract
+		var erc20tokencontract = this.importERC20Token(session, tokenaddress);
+
+		if (providerurl) {
+			erc20tokencontract.setWeb3ProviderUrl(providerurl);
+		}
+		else {
+			var currentproviderURL = this.getWeb3ProviderUrl(session);
+			
+			if (currentproviderURL)
+				erc20tokencontract.setWeb3ProviderUrl(currentproviderURL);
+			else
+				throw new Error('missing a web3 url');
+		}
+		
+		
+		if (erc20tokencontract) {
+			
+			var fromaccount = ethtx.getFromAccount();
+			var toaccount = ethtx.getToAccount();
+			var payingaccount = (ethtx.getPayingAccount() ? ethtx.getPayingAccount() : fromaccount);
+			let password = null; // no need since we have a private key
+			
+			try {
+				// unlock account
+				const unlock = await ethnodemodule.unlockAccount(session, payingaccount, password, 300) // 300s, but we can relock the account
+				.catch((err) => {
+					console.log('error in locking account: ' + err);
+				});
+
+				if (!unlock)
+					return Promise.reject('could not unlock sending account');
+				
+				console.log('paying account ' + payingaccount.getAddress() + ' is now unlocked');
+				
+				txhash = await erc20tokencontract.transferAsync(fromaccount, toaccount, tokenamount, ethtx)
+				.catch((err) => {
+					console.log('error in token transfer: ' + err);
+				});
+				
+				
+				// relock account
+				ethnodemodule.lockAccount(session, payingaccount);
+	
+			}
+			catch(e) {
+				console.log('error in token transfer: ' + e);
+			}
+			
+			return txhash;
+		}
+	}
 
 	
 	/***********************/
@@ -1341,6 +1415,17 @@ var ModuleControllers = class {
 		var walletmodule = global.getModuleObject('wallet');
 
 		return walletmodule.getSchemeFromWeb3Url(session, web3url);
+	}
+
+	async createSchemeFee(scheme, level) {
+		var fee = this.createFee(level);
+		
+		if (scheme) {
+			fee.gaslimit = scheme.getGasLimit(level);
+			fee.gasPrice = scheme.getGasPrice(level);
+		}	
+		
+		return fee;
 	}
 	
 	async isValidEthnodeRPC(session, rpcurl) {
@@ -1593,6 +1678,44 @@ var ModuleControllers = class {
 		var walletmodule = global.getModuleObject('wallet');
 
 		return walletmodule.getWalletCardAsContact(session, wallet, card);
+	}
+
+	async createWalletCard(session, wallet, scheme, privatekey) {
+		
+		if (!scheme)
+			return Promise.reject('could no scheme defined');
+
+		var sessionaccount;
+
+		if (privatekey) {
+			// create a session account from private key
+			if (this.isValidPrivateKey(session, privatekey)) {
+				sessionaccount = await this.getSessionAccountFromPrivateKey(session, wallet, privatekey);
+			}
+	
+			if (!sessionaccount)
+				return Promise.reject('not a valid private key');
+	
+		}
+		else {
+			// we generate a key
+			var _privatekey = this.generatePrivateKey();
+			
+			sessionaccount = await this.getSessionAccountFromPrivateKey(session, wallet, _privatekey);
+	
+			if (!sessionaccount)
+				return Promise.reject('could not generate a private key');
+		}
+
+		var address = sessionaccount.getAddress();
+		var configurl = 'storage://scheme?uuid=' + scheme.getSchemeUUID();
+		var authname = null;
+		var password = null;
+		var options = {};
+
+		var card = await wallet.importCard(address, configurl, authname, password, options);
+
+		return card;
 	}
 
 	async createWalletCardFromPrivateKey(session, wallet, web3providerurl, privatekey) {
