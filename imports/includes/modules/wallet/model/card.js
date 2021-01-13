@@ -26,6 +26,7 @@ var Card = class {
 		this.ethereumnodeaccess = null;
 		
 		this.locked = true;
+		this.readonly = false;
 		
 		this.tokenaccountmap = Object.create(null);
 		
@@ -307,7 +308,11 @@ var Card = class {
 						});
 					}
 					else {
-						unlockpromise = Promise.reject('can not retrieve private key for ' + this.address);
+						// we only have the address
+						// we unlock the card but mark it as read-only
+						this.locked = false;
+						this.readonly = true;
+						unlockpromise = Promise.resolve(true);
 					}
 					
 					break;
@@ -486,6 +491,62 @@ var Card = class {
 		var account = session.getAccountObject(address);
 		
 		return account;
+	}
+
+	canSign(callback) {
+		if (this.readonly === true) {
+			if (callback)
+			callback(null, false);
+
+			return Promise.resolve(false);
+		}
+
+		// look if we can get the privatekey
+		return this.exportPrivateKey()
+		.then((privatekey) => {
+			if (privatekey)
+				return true
+			else
+				return false;
+		})
+		.then((res) => {
+			if (callback)
+				callback(null, res);
+			
+			return res;
+		})
+		.catch(err => {
+			if (callback)
+				callback(null, false);
+			
+			return false;
+		});
+
+	}
+
+	exportPrivateKey(callback) {
+		if (this.isLocked()) {
+			if (callback)
+				callback('ERR_CARD_LOCKED', null);
+			
+			return Promise.reject('ERR_CARD_LOCKED');
+		}
+
+		var sessionaccount = this._getSessionAccountObject();
+		
+		if (!sessionaccount) {
+			if (callback)
+				callback('ERR_CARD_CANNOT_SIGN', null);
+			
+			return Promise.reject('ERR_CARD_CANNOT_SIGN');
+		}
+
+		var privatekey = sessionaccount.getPrivateKey();
+
+		if (callback)
+			callback(null, privatekey);
+
+		return Promise.resolve(privatekey);
 	}
 	
 	_getSessionAccountObject() {
