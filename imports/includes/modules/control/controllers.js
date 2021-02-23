@@ -1064,7 +1064,7 @@ var ModuleControllers = class {
 		var erc20tokencontract = this.importERC20Token(session, tokenaddress);
 		
 		// ask for balance
-		const balance = erc20tokencontract.balanceOf(account)
+		const balance = await erc20tokencontract.balanceOf(account)
 		.catch((err) => {
 			console.log('balance position for ' + address + ' could not be retrieved');
 			
@@ -1680,10 +1680,20 @@ var ModuleControllers = class {
 		return walletmodule.getWalletCardAsContact(session, wallet, card);
 	}
 
+	async importWalletCard(session, wallet, cardname, address, configurl, authname, password, options) {
+		const card = await wallet.importCard(address, configurl, authname, password, options);
+
+		card.setLabel(cardname);
+				
+		await card.save();
+
+		return card;
+	}
+
 	async createWalletCard(session, wallet, scheme, privatekey) {
 		
 		if (!scheme)
-			return Promise.reject('could no scheme defined');
+			return Promise.reject('no scheme defined');
 
 		var sessionaccount;
 
@@ -1707,13 +1717,41 @@ var ModuleControllers = class {
 				return Promise.reject('could not generate a private key');
 		}
 
-		var address = sessionaccount.getAddress();
-		var configurl = 'storage://scheme?uuid=' + scheme.getSchemeUUID();
-		var authname = null;
-		var password = null;
-		var options = {};
+		var card;
 
-		var card = await wallet.importCard(address, configurl, authname, password, options);
+		if (scheme.isRemote() === false) {
+			var address = sessionaccount.getAddress();
+			var configurl = 'storage://scheme?uuid=' + scheme.getSchemeUUID();
+			var authname = null;
+			var password = null;
+			var options = {};
+	
+			card = await wallet.importCard(address, configurl, authname, password, options);
+		}
+		else {
+			var wallettype = wallet.getWalletType();
+
+			switch(wallettype) {
+				case 0:
+					return Promise.reject('needs credentials to create remote create card');
+				case 1:
+					var walletschemeuuid = wallet.getSchemeUUID();
+
+					if (walletschemeuuid && (walletschemeuuid === scheme.getSchemeUUID())) {
+						var address = sessionaccount.getAddress();
+						var configurl = 'storage://scheme?uuid=' + scheme.getSchemeUUID();
+						var authname = null;
+						var password = null;
+						var options = {};
+				
+						card = await wallet.importCard(address, configurl, authname, password, options);
+					}
+					else
+						return Promise.reject('needs credentials to create remote create card');
+				default:
+					return Promise.reject('wrong wallet type: ' + wallettype);
+			}
+		}
 
 		return card;
 	}
@@ -1764,6 +1802,34 @@ var ModuleControllers = class {
 		var card = await wallet.importCard(address, configurl, authname, password, options);
 
 		return card;
+	}
+
+	async makeWalletCard(session, wallet, scheme, authname, password, address) {
+		// to create a remote card on a remote wallet, with different schemes
+		var Card = global.getModuleClass('wallet', 'Card');;
+
+		var cardjson = {};
+		cardjson.authname = authname;
+		cardjson.address = address;
+		cardjson.password = password;
+
+		cardjson.uuid = walletsession.guid();
+		cardjson.label = authname;
+
+		const card_new =  Card.readFromJson(wallet, scheme, cardjson);
+
+		if (card_new) {
+			await card_new.init();
+
+			if (card_new.isLocked()) {
+				await card_new.unlock();
+			}
+
+			return card_new;
+		}
+		else
+			throw new Error('could not create card');
+
 	}
 
 

@@ -9,10 +9,13 @@ var Scheme = class {
 	static get REMOTE_SCHEME() { return 1;}
 
 	
-	static get AVG_TRANSACTION_FEE() { return 0.00042173;}
-
 	static get DEFAULT_GAS_LIMIT() { return 4850000;}
 	static get DEFAULT_GAS_PRICE() { return 10000000000;}
+
+	static get AVG_TRANSACTION_FEE() { return 0.00021;}
+
+	static get TRANSACTION_UNITS_MIN() { return 240;} 
+		// AVG_TRANSACTION_FEE * TRANSACTION_UNITS_MIN should be higher than DEFAULT_GAS_LIMIT * DEFAULT_GAS_PRICE
 
 	
 	constructor(module, session, restserver, authserver, keyserver, ethnodeserver) {
@@ -304,7 +307,7 @@ var Scheme = class {
 	
 	// minimal number of transactions
 	getTransactionUnitsThreshold() {
-		var number = 5;
+		var number = Scheme.TRANSACTION_UNITS_MIN;
 		var ethnodeserver = this.getEthNodeServerConfig();
 		
 		if (ethnodeserver && ethnodeserver.transaction_units_min)
@@ -440,6 +443,21 @@ var Scheme = class {
 	}
 	
 	// utils
+	getAverageTransactionFee() {
+		var global = this.global;
+		var ethnodemodule = global.getModuleObject('ethnode');
+		
+		var avg_transaction_fee = Scheme.AVG_TRANSACTION_FEE;
+
+		var ethnodeserver = this.getEthNodeServerConfig();
+		
+		if (ethnodeserver && ethnodeserver.avg_transaction_fee)
+			avg_transaction_fee = parseFloat(ethnodeserver.avg_transaction_fee.toString());
+
+		return avg_transaction_fee;
+
+	}
+
 	getTransactionUnits(transactioncredits) {
 		var global = this.global;
 		var ethnodemodule = global.getModuleObject('ethnode');
@@ -455,6 +473,23 @@ var Scheme = class {
 		var units = ethcredit/(avg_transaction_fee > 0 ? avg_transaction_fee : Scheme.AVG_TRANSACTION_FEE);
 		
 		return Math.floor(units);
+	}
+	
+	getTransactionCredits(transactionunits) {
+		var global = this.global;
+		var ethnodemodule = global.getModuleObject('ethnode');
+		
+		var avg_transaction_fee = Scheme.AVG_TRANSACTION_FEE;
+
+		var ethnodeserver = this.getEthNodeServerConfig();
+		
+		if (ethnodeserver && ethnodeserver.avg_transaction_fee)
+			avg_transaction_fee = parseFloat(ethnodeserver.avg_transaction_fee.toString());
+		
+		var transactioncredits = transactionunits*(avg_transaction_fee > 0 ? avg_transaction_fee : Scheme.AVG_TRANSACTION_FEE);
+		var ethcredit = ethnodemodule.getEtherFromwei(transactioncredits);
+		
+		return ethcredit;
 	}
 	
 	getGasLimit(level) {

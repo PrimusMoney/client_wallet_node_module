@@ -125,8 +125,16 @@ var Card = class {
 	getCardType() {
 		var scheme = this.scheme;
 		
-		if (scheme.isRemote())
-			return Card.REMOTE_CARD
+		if (scheme.isRemote()) {
+			var wallet = this.wallet;
+			var walletschemeuuid = wallet.getSchemeUUID();
+			var schemeuuid = scheme.getSchemeUUID();
+
+			if (walletschemeuuid && (walletschemeuuid === schemeuuid))
+				return Card.CLIENT_CARD;
+			else
+				return Card.REMOTE_CARD
+		}
 		else
 			return Card.CLIENT_CARD;
 	}
@@ -194,10 +202,25 @@ var Card = class {
 	
 	_createSession(callback) {
 		var global = this.global;
+
+		if (this.wallet) {
+			var scheme = this.scheme;
+			var session;
 		
-		if ((this.wallet) && (this.uuid)){
-			var session = this.wallet.cardsessions[this.uuid];
-			
+			if (scheme && scheme.isRemote()) {
+				var wallet = this.wallet;
+				var walletschemeuuid = wallet.getSchemeUUID();
+				var schemeuuid = scheme.getSchemeUUID();
+
+				if (walletschemeuuid && (walletschemeuuid === schemeuuid)) {
+					// card has same session than wallet
+					session = wallet._getSession();
+				}
+			}
+			else if (this.uuid) {
+				session = this.wallet.cardsessions[this.uuid];
+			}
+
 			if (session) {
 				this.session = session;
 				
@@ -206,7 +229,10 @@ var Card = class {
 					
 				return Promise.resolve(session);
 			}
+
 		}
+		
+
 		
 		return this.scheme.createSchemeSessionObject((err, session) => {
 			this.session = session;

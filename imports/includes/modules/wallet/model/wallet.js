@@ -809,13 +809,15 @@ var Wallet = class {
 	}
 	
 	getCardFromAddressOnScheme(address, scheme, callback) {
+		var schemeuuid = scheme.getSchemeUUID();
+
 		return this.getCardsWithAddress(address).
-		then(() => {
-			for (var i = 0; i < (cardlist ? cardlist.length : 0); i++) {
-				var cardschemeuuid = cardlist[i].getSchemeUUID();
+		then((cardarray) => {
+			for (var i = 0; i < (cardarray ? cardarray.length : 0); i++) {
+				var cardschemeuuid = cardarray[i].getSchemeUUID();
 				
 				if (cardschemeuuid == schemeuuid) {
-					return cardlist[i];
+					return cardarray[i];
 				}
 			}
 			
