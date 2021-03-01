@@ -5,7 +5,7 @@ var Module = class {
 	
 	constructor() {
 		this.name = 'mvc-client-wallet';
-		this.current_version = "0.20.8.2021.03.13";
+		this.current_version = "0.20.8.1.2021.03.13";
 		
 		this.global = null; // put by global on registration
 		this.app = null;
@@ -101,6 +101,10 @@ var Module = class {
 
 		// session
 		global.registerHook('creatingSession_hook', 'mvc', this.creatingSession_hook);
+		
+		// signal module is ready
+		var rootscriptloader = global.getRootScriptLoader();
+		rootscriptloader.signalEvent('on_mvc_client_wallet_module_ready');
 	}
 	
 	//

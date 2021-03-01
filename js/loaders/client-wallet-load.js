@@ -52,7 +52,7 @@ rootscriptloader.push_import(xtrascriptloader,'../../imports/includes/modules/wa
 import '../../imports/includes/modules/wallet/model/wallet.js';
 
 // mvc-api
-rootscriptloader.push_import(xtrascriptloader,'../../imports/includes/modules/mvc-api/module-load.js')
-import '../../imports/includes/modules/mvc-api/module-load.js';
+rootscriptloader.push_import(xtrascriptloader,'../../imports/includes/mvc-api/module-load.js')
+import '../../imports/includes/mvc-api/module-load.js';
 
 xtrascriptloader.load_scripts();
