@@ -51,4 +51,8 @@ import '../../imports/includes/modules/wallet/model/token.js';
 rootscriptloader.push_import(xtrascriptloader,'../../imports/includes/modules/wallet/model/wallet.js')
 import '../../imports/includes/modules/wallet/model/wallet.js';
 
+// mvc-api
+rootscriptloader.push_import(xtrascriptloader,'../../imports/includes/modules/mvc-api/module-load.js')
+import '../../imports/includes/modules/mvc-api/module-load.js';
+
 xtrascriptloader.load_scripts();

@@ -96,6 +96,16 @@ var ModuleControllers = class {
 		return childsession;
 	}
 	
+	attachChildSessionObject(childsession, parentsession) {
+		var global = this.global;
+		
+		var clientmodules = global.getModuleObject('clientmodules');
+
+		clientmodules.attachChildSessionObject(childsession, parentsession);
+
+		return childsession;
+	}
+	
 	async setSessionNetworkConfig(session, networkconfig) {
 		var global = this.global;
 		
@@ -490,7 +500,21 @@ var ModuleControllers = class {
 		return this.ethereum_core.getArtifact(artifactname);
 	}
 	
+	// stored on the local storage (either client or server side depending on session)
 	async getLocalJsonLeaf(session, keys, bForceRefresh) {
+		// obsolete naming
+		var localstorage = session.getLocalStorageObject();
+		
+		const result = new Promise((resolve, reject) => { 
+			localstorage.readLocalJson(keys, bForceRefresh, (err, res) => {
+				if (err) reject(err); else resolve(res);
+			}); // does not return a promise
+		});
+		
+		return result;
+	}
+	
+	async readLocalJson(session, keys, bForceRefresh) {
 		var localstorage = session.getLocalStorageObject();
 		
 		const result = new Promise((resolve, reject) => { 
@@ -507,6 +531,31 @@ var ModuleControllers = class {
 		
 		const result = new Promise((resolve, reject) => { 
 			localstorage.saveLocalJson(keys, json, (err, res) => {
+				if (err) reject(err); else resolve(res);
+			}); // does not return a promise
+		});
+		
+		return result;
+	}
+
+	// stored on the client side
+	async readClientSideJson(session, keys) {
+		var clientAccess = session.getClientStorageAccessInstance();
+		
+		const result = new Promise((resolve, reject) => { 
+			clientAccess.readClientSideJson(keys, (err, res) => {
+				if (err) reject(err); else resolve(res);
+			}); // does not return a promise
+		});
+		
+		return result;
+	}
+	
+	async saveClientSideJson(session, keys, json) {
+		var clientAccess = session.getClientStorageAccessInstance();
+		
+		const result = new Promise((resolve, reject) => { 
+			clientAccess.saveClientSideJson(keys, json, (err, res) => {
 				if (err) reject(err); else resolve(res);
 			}); // does not return a promise
 		});
@@ -683,6 +732,27 @@ var ModuleControllers = class {
 
 		return result;
 	}
+
+	async getEthereumTransactionCount(session, account, defaultBlock) {
+		var global = this.global;
+		
+		var ethnodemodule = global.getModuleObject('ethnode');
+		
+		var EthereumNodeAccess = ethnodemodule.getEthereumNodeAccessInstance(session);
+
+		var fromaddress = account.getAddress();
+		
+		const result = new Promise((resolve, reject) => { 
+			EthereumNodeAccess.web3_getTransactionCount(fromaddress, defaultBlock, (err, res) => {
+				if (err) reject(err); else resolve(res);
+			})
+			.catch(err => reject(err));
+		});
+		
+		return result;
+	}
+	
+
 
 	async _getEthNodeTransactionObjectFromHash(session, txhash, callback) {
 		var global = this.global;
@@ -1733,7 +1803,7 @@ var ModuleControllers = class {
 
 			switch(wallettype) {
 				case 0:
-					return Promise.reject('needs credentials to create remote create card');
+					return Promise.reject('ERR_MISSING_CREDENTIALS');
 				case 1:
 					var walletschemeuuid = wallet.getSchemeUUID();
 
@@ -1747,7 +1817,7 @@ var ModuleControllers = class {
 						card = await wallet.importCard(address, configurl, authname, password, options);
 					}
 					else
-						return Promise.reject('needs credentials to create remote create card');
+						return Promise.reject('ERR_MISSING_CREDENTIALS');
 				default:
 					return Promise.reject('wrong wallet type: ' + wallettype);
 			}
@@ -1806,6 +1876,7 @@ var ModuleControllers = class {
 
 	async makeWalletCard(session, wallet, scheme, authname, password, address) {
 		// to create a remote card on a remote wallet, with different schemes
+		var global = this.global;
 		var Card = global.getModuleClass('wallet', 'Card');;
 
 		var cardjson = {};

@@ -135,6 +135,14 @@ class Client_Wallet {
 		return require('./js/control/controllers.js').getObject();
 	}
 
+	getMvcAPI() {
+		var clientglobal = this.getGlobalObject();
+		
+		var mvcmodule = clientglobal.getModuleObject('mvc-client-wallet');
+
+		return mvcmodule;
+	}
+	
 	getClientAPI() {
 		var global = this.getGlobalObject();
 

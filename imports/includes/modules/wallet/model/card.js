@@ -452,6 +452,17 @@ var Card = class {
 		
 	}
 	
+	checkLock(callback) {
+		if (this.isLocked()) {
+			if (callback)
+				callback('ERR_CARD_LOCKED', null);
+			
+			return Promise.reject('ERR_CARD_LOCKED');
+		}
+
+		return true;
+	}
+
 	isLocked() {
 		if (this.wallet.isLocked())
 			return true;

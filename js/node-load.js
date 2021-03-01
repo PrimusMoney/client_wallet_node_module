@@ -144,6 +144,22 @@ class NodeLoad {
 			rootscriptloader.registerEventListener('on_wallet_module_ready', function(eventname) {
 				checkmodulesload.check('wallet');
 			});
+
+			// mvc-client-wallet module
+			ScriptLoader.reclaimScriptLoaderName('mvcclientwalletmoduleloader'); // in case another node module used this name
+			xtrawebscriptloader.getChildLoader('mvcclientwalletmoduleloader'); // create loader with correct root dir
+
+			xtrawebscriptloader.push_script('./includes/mvc-api/module.js', function () {
+				console.log('mvc client wallet module loaded');
+			});
+
+			// mvc-client-wallet module ready (sent by mvc-client-wallet module at the end of registerHooks)
+			checkmodulesload.wait('mvcclientwalletmodule');
+			rootscriptloader.registerEventListener('on_mvc_client_wallet_module_ready', function(eventname) {
+				checkmodulesload.check('mvcclientwalletmodule');
+			});
+			
+			
 				
 				
 			// start loading xtra_webmoduleloader

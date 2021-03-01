@@ -378,7 +378,18 @@ var Wallet = class {
 		
 	}
 	
-	
+	checkLock(callback) {
+		if (this.isLocked()) {
+			
+			if (callback)
+				callback('ERR_WALLET_LOCKED', null);
+			
+			return Promise.reject('ERR_WALLET_LOCKED');
+		}
+
+		return true;
+	}
+
 	isLocked() {
 		switch(this.wallettype) {
 			case Wallet.CLIENT_WALLET:
