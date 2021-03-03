@@ -5,7 +5,7 @@ var Module = class {
 	
 	constructor() {
 		this.name = 'mvc-client-wallet';
-		this.current_version = "0.20.10.2021.03.13";
+		this.current_version = "0.20.11.2021.03.13";
 		
 		this.global = null; // put by global on registration
 		this.app = null;
@@ -54,15 +54,15 @@ var Module = class {
 
 		var self = this;
 		var global = this.global;
-		var mvcmodule = global.getModuleObject('mvc');
+		var mvcmodule = this;
 		
 
 		// mvc files
-		var modulescriptloader = parentscriptloader.getChildLoader('mvcmoduleloader');
+		var modulescriptloader = parentscriptloader.getChildLoader('mvcclientwalletmoduleloader');
 		
-		var moduleroot = './includes/react-common';
+		var moduleroot = './includes';
 
-		modulescriptloader.push_script( moduleroot + '/control/controllers.js');
+		//modulescriptloader.push_script( moduleroot + '/control/controllers.js');
 		//modulescriptloader.push_script( moduleroot + '/view/views.js');
 		//modulescriptloader.push_script( moduleroot + '/model/models.js');
 
@@ -97,10 +97,10 @@ var Module = class {
 		var global = this.global;
 		
 		// initialization
-		global.registerHook('postFinalizeGlobalScopeInit_hook', 'mvc', this.postFinalizeGlobalScopeInit_hook);
+		global.registerHook('postFinalizeGlobalScopeInit_hook', 'mvc-client-wallet', this.postFinalizeGlobalScopeInit_hook);
 
 		// session
-		global.registerHook('creatingSession_hook', 'mvc', this.creatingSession_hook);
+		global.registerHook('creatingSession_hook', 'mvc-client-wallet', this.creatingSession_hook);
 		
 		// signal module is ready
 		var rootscriptloader = global.getRootScriptLoader();
@@ -145,14 +145,14 @@ var Module = class {
 			
 		}
 
-		result.push({module: 'mvc', handled: true});
+		result.push({module: 'mvc-client-wallet', handled: true});
 		
 		return true;
 	}
 	
 	
 	// objects
-	getAppObject() {
+/* 	getAppObject() {
 		return this.app;
 	}
 	
@@ -210,7 +210,7 @@ var Module = class {
 			throw new Error('no getClientControllers method to retrieve controllers object!');
 
 		this.clientapicontrollers = moduleclientcontrollers.getClientControllers();
-	}
+	} */
 
 	_getClientAPI() {
 		if (this.clientapicontrollers)
@@ -593,7 +593,7 @@ var Module = class {
 			return Promise.reject('card uuid is undefined');
 		
 		var global = this.global;
-		var mvcmodule = global.getModuleObject('mvc');
+		var mvcmodule = this;
 		var _apicontrollers = this._getClientAPI();
 
 		var session = await _apicontrollers.getSessionObject(sessionuuid);
@@ -632,7 +632,7 @@ var Module = class {
 			return Promise.reject('card uuid is undefined');
 		
 		var global = this.global;
-		var mvcmodule = global.getModuleObject('mvc');
+		var mvcmodule = this;
 		var _apicontrollers = this._getClientAPI();
 
 		var session = await _apicontrollers.getSessionObject(sessionuuid);
@@ -687,7 +687,7 @@ var Module = class {
 			return Promise.reject('card uuid is undefined');
 		
 		var global = this.global;
-		var mvcmodule = global.getModuleObject('mvc');
+		var mvcmodule = this;
 		var _apicontrollers = this._getClientAPI();
 
 		var session = await _apicontrollers.getSessionObject(sessionuuid);
@@ -729,7 +729,7 @@ var Module = class {
 			return Promise.reject('card uuid is undefined');
 		
 		var global = this.global;
-		var mvcmodule = global.getModuleObject('mvc');
+		var mvcmodule = this;
 		var _apicontrollers = this._getClientAPI();
 
 		var session = await _apicontrollers.getSessionObject(sessionuuid);
@@ -772,7 +772,7 @@ var Module = class {
 			return Promise.reject('card uuid is undefined');
 		
 		var global = this.global;
-		var mvcmodule = global.getModuleObject('mvc');
+		var mvcmodule = this;
 		var _apicontrollers = this._getClientAPI();
 
 		var session = await _apicontrollers.getSessionObject(sessionuuid);
@@ -814,7 +814,7 @@ var Module = class {
 			return Promise.reject('card uuid is undefined');
 		
 		var global = this.global;
-		var mvcmodule = global.getModuleObject('mvc');
+		var mvcmodule = this;
 		var _apicontrollers = this._getClientAPI();
 
 		var session = await _apicontrollers.getSessionObject(sessionuuid);
@@ -851,6 +851,12 @@ var Module = class {
 	// Scheme functions
 	//
 
+	_getSchemeNetworkConfig(scheme) {
+		var network = scheme.getNetworkConfig();
+
+		return network;
+	}
+
 	async getDefaultLocalSchemeInfo(sessionuuid) {
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
@@ -865,7 +871,7 @@ var Module = class {
 		
 		var scheme = await _apicontrollers.getDefaultScheme(session, 0);
 
-		var mvcmodule = global.getModuleObject('mvc');
+		var mvcmodule = this;
 
 		let schemeinfo = {};
 		mvcmodule._fillSchemeInfoFromScheme(schemeinfo, scheme);
@@ -1590,7 +1596,7 @@ var Module = class {
 			return Promise.reject('could not find wallet ' + walletuuid);
 
 		
-		var mvcmodule = global.getModuleObject('mvc');
+		var mvcmodule = this;
 
 		var cards = await wallet.getCardList(true);
 
@@ -2023,7 +2029,7 @@ var Module = class {
 		var global = this.global;
 		var _apicontrollers = this._getClientAPI();
 
-		var mvcmodule = global.getModuleObject('mvc');
+		var mvcmodule = this;
 
 		var cardinfo = await mvcmodule.getCardInfo(sessionuuid, walletuuid, carduuid);
 
@@ -2082,7 +2088,7 @@ var Module = class {
 		
 		
 		var global = this.global;
-		var mvcmodule = global.getModuleObject('mvc');
+		var mvcmodule = this;
 		var _apicontrollers = this._getClientAPI();
 
 		var session = await _apicontrollers.getSessionObject(sessionuuid);
@@ -2656,4 +2662,4 @@ GlobalClass.getGlobalObject().registerModuleObject(new Module());
 
 //dependencies
 if ( typeof GlobalClass !== 'undefined' && GlobalClass )
-GlobalClass.getGlobalObject().registerModuleDepency('mvc', 'common');    
+GlobalClass.getGlobalObject().registerModuleDepency('mvc-client-wallet', 'common');    
