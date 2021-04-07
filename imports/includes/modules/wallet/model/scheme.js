@@ -306,14 +306,14 @@ var Scheme = class {
 	}
 	
 	// minimal number of transactions
-	getTransactionUnitsThreshold() {
+	getTransactionUnitsThreshold(feelevel) {
 		var number = Scheme.TRANSACTION_UNITS_MIN;
 		var ethnodeserver = this.getEthNodeServerConfig();
 		
 		if (ethnodeserver && ethnodeserver.transaction_units_min)
 			number = parseInt(ethnodeserver.transaction_units_min.toString());
 		
-		return number;
+		return number * (feelevel && feelevel.transaction_units_min_multiplier ? parseInt(feelevel.transaction_units_min_multiplier) : 1);
 	}
 	
 	
@@ -443,7 +443,7 @@ var Scheme = class {
 	}
 	
 	// utils
-	getAverageTransactionFee() {
+	getAverageTransactionFee(feelevel) {
 		var global = this.global;
 		var ethnodemodule = global.getModuleObject('ethnode');
 		
@@ -454,8 +454,13 @@ var Scheme = class {
 		if (ethnodeserver && ethnodeserver.avg_transaction_fee)
 			avg_transaction_fee = parseFloat(ethnodeserver.avg_transaction_fee.toString());
 
-		return avg_transaction_fee;
+		return avg_transaction_fee * (feelevel && feelevel.avg_transaction_fee_multiplier ? parseInt(feelevel.avg_transaction_fee_multiplier) : 1);
 
+	}
+
+	async getTransactionUnitsAsync(transactioncredits) {
+		// TODO: look if using DecimalAmount could improve the division
+		return this.getTransactionUnits(transactioncredits);
 	}
 
 	getTransactionUnits(transactioncredits) {
@@ -473,6 +478,27 @@ var Scheme = class {
 		var units = ethcredit/(avg_transaction_fee > 0 ? avg_transaction_fee : Scheme.AVG_TRANSACTION_FEE);
 		
 		return Math.floor(units);
+	}
+
+	async getTransactionCreditsAsync(transactionunits) {
+		var global = this.global;
+		var session = this._getSession();
+
+		var transactioninfo  = {};
+
+		transactioninfo.avg_transaction_fee = this.getAverageTransactionFee();
+		transactioninfo.units_threshold = this.getTransactionUnitsThreshold();
+		
+		var ethnodemodule = global.getModuleObject('ethnode');
+		var walletmodule = this.module;
+
+		var weiamount = ethnodemodule.getWeiFromEther(transactioninfo.avg_transaction_fee);
+		var avg_transaction = await walletmodule.createDecimalAmountAsync(session, weiamount, 18);
+		var credits_decimal = await avg_transaction.multiply(transactionunits);
+
+		var credits = await credits_decimal.toInteger();
+		
+		return credits;
 	}
 	
 	getTransactionCredits(transactionunits) {
@@ -492,23 +518,35 @@ var Scheme = class {
 		return ethcredit;
 	}
 	
-	getGasLimit(level) {
+	getGasLimit(feelevel) {
 		var default_gas_limit = Scheme.DEFAULT_GAS_LIMIT;
 		var ethnodeserver = this.getEthNodeServerConfig();
 		
 		if (ethnodeserver && ethnodeserver.default_gas_limit)
 			default_gas_limit = parseInt(ethnodeserver.default_gas_limit.toString());
-		
+
+		if (feelevel && feelevel.default_gas_limit_multiplier) {
+			var multiplier = parseInt(feelevel.default_gas_limit_multiplier);
+
+			return multiplier.default_gas_limit;
+		}
+		else
 		return default_gas_limit;
 	}
 	
-	getGasPrice(level) {
+	getGasPrice(feelevel) {
 		var default_gas_price = Scheme.DEFAULT_GAS_PRICE;
 		var ethnodeserver = this.getEthNodeServerConfig();
 		
 		if (ethnodeserver && ethnodeserver.default_gas_price)
 			default_gas_price = parseInt(ethnodeserver.default_gas_price.toString());
 		
+		if (feelevel && feelevel.default_gas_price_multiplier) {
+			var multiplier = parseInt(feelevel.default_gas_price_multiplier);
+
+			return multiplier.default_gas_price;
+		}
+		else
 		return default_gas_price;
 	}
 

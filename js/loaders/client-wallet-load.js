@@ -36,6 +36,9 @@ import '../../imports/includes/modules/wallet/model/card.js';
 rootscriptloader.push_import(xtrascriptloader,'../../imports/includes/modules/wallet/model/contact.js')
 import '../../imports/includes/modules/wallet/model/contact.js';
 
+rootscriptloader.push_import(xtrascriptloader,'../../imports/includes/modules/wallet/model/decimal-amount.js')
+import '../../imports/includes/modules/wallet/model/decimal-amount.js';
+
 rootscriptloader.push_import(xtrascriptloader,'../../imports/includes/modules/wallet/model/scheme.js')
 import '../../imports/includes/modules/wallet/model/scheme.js';
 

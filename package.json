@@ -1,6 +1,6 @@
 {
   "name": "@primusmoney/client_wallet",
-  "version": "0.20.11",
+  "version": "0.20.12",
   "license": "UNLICENSED",
   "repository": {
     "type": "git",
@@ -12,10 +12,10 @@
     "test:node": "mocha ./tests/tests.js"
   },
   "dependencies": {
-    "@p2pmoney-org/ethereum_core": "^0.20.10",
-    "@p2pmoney-org/ethereum_erc20": "^0.20.10",
-    "@p2pmoney-org/ethereum_xtra_web": "^0.20.10",
-    "@primusmoney/ethereum_xtra_web": "^0.20.10"
+    "@p2pmoney-org/ethereum_core": "^0.20.12",
+    "@p2pmoney-org/ethereum_erc20": "^0.20.12",
+    "@p2pmoney-org/ethereum_xtra_web": "^0.20.12",
+    "@primusmoney/ethereum_xtra_web": "^0.20.12"
   },
   "devDependencies": {
     "chai": "^4.2.0",

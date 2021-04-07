@@ -2003,6 +2003,14 @@ var Module = class {
 	//
 	// utils
 	//
+	async createDecimalAmountAsync(session, amount, decimals) {
+		var walletmodule = this;
+		var DecimalAmountClass = walletmodule.DecimalAmount;
+
+		return DecimalAmountClass.create(session, amount, decimals);
+	}
+
+
 	chained_resolve(arr, createpromisefunc) {
 		var res = [];
 		

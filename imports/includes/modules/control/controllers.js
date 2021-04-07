@@ -678,11 +678,11 @@ var ModuleControllers = class {
 		return result;
 	}
 	
-	createFee(level) {
+	createFee(feelevel) {
 		var fee = {};
 		
-		fee.gaslimit = 4850000;
-		fee.gasPrice = 10000000000;
+		fee.gaslimit = 4850000 * (feelevel && feelevel.default_gas_limit_multiplier ? parseInt(feelevel.default_gas_limit_multiplier) : 1);
+		fee.gasPrice = 	10000000000 * (feelevel && feelevel.default_gas_price_multiplier ? parseInt(feelevel.default_gas_price_multiplier) : 1);
 		
 		return fee;
 	}
@@ -1379,6 +1379,14 @@ var ModuleControllers = class {
 	/*      Wallet         */
 	/***********************/
 
+	async createDecimalAmount(session, amount, decimals) {
+		var global = this.global;
+		
+		var walletmodule = global.getModuleObject('wallet');
+
+		return walletmodule.createDecimalAmount(session, amount, decimals);
+	}
+
 	//
 	// Schemes
 	//
@@ -1487,12 +1495,12 @@ var ModuleControllers = class {
 		return walletmodule.getSchemeFromWeb3Url(session, web3url);
 	}
 
-	async createSchemeFee(scheme, level) {
-		var fee = this.createFee(level);
+	async createSchemeFee(scheme, feelevel) {
+		var fee = this.createFee(feelevel);
 		
 		if (scheme) {
-			fee.gaslimit = scheme.getGasLimit(level);
-			fee.gasPrice = scheme.getGasPrice(level);
+			fee.gaslimit = scheme.getGasLimit(feelevel);
+			fee.gasPrice = scheme.getGasPrice(feelevel);
 		}	
 		
 		return fee;

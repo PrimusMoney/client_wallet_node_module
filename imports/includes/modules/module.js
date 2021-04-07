@@ -6,7 +6,7 @@
 class ClientModules {
 	constructor() {
 		this.name = 'clientmodules';
-		this.current_version = "0.20.11.2021.03.13";
+		this.current_version = "0.20.12.2021.04.07";
 		
 		this.global = null; // put by global on registration
 		this.isready = false;
@@ -272,11 +272,11 @@ class ClientModules {
 		global.unregisterEventListener(eventname, listeneruuid);
 	}
 
-	signalEvent(eventname) {
+	signalEvent(eventname, params) {
 		var global = this.global;
 		console.log('signalEvent called for event ' + eventname);
 		
-		global.signalEvent(eventname);
+		global.signalEvent(eventname, params);
 	}
 	
 	//

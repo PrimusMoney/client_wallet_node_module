@@ -5,7 +5,7 @@ var Module = class {
 	
 	constructor() {
 		this.name = 'mvc-client-wallet';
-		this.current_version = "0.20.11.2021.03.13";
+		this.current_version = "0.20.12.2021.04.07";
 		
 		this.global = null; // put by global on registration
 		this.app = null;
@@ -106,6 +106,22 @@ var Module = class {
 		var rootscriptloader = global.getRootScriptLoader();
 		rootscriptloader.signalEvent('on_mvc_client_wallet_module_ready');
 	}
+
+	postRegisterModule() {
+		console.log('postRegisterModule called for ' + this.name);
+		if (!this.isloading) {
+			var global = this.global;
+			var self = this;
+			var rootscriptloader = global.getRootScriptLoader();
+			
+			this.loadModule(rootscriptloader, function() {
+				if (self.registerHooks)
+				self.registerHooks();
+			});
+		}
+	}
+	
+
 	
 	//
 	// hooks
@@ -152,14 +168,14 @@ var Module = class {
 	
 	
 	// objects
-/* 	getAppObject() {
+ 	getAppObject() {
 		return this.app;
 	}
 	
 	setAppObject(app) {
 		this.app = app;
 		
-		// fill app object for top level navigation
+		// fill app object for top feelevel navigation
 		var controllers = this.getControllersObject();
 		
 		controllers.setAppObject(app);
@@ -172,7 +188,7 @@ var Module = class {
 		var global = this.global;
 		this.controllers = new this.Controllers(global);
 		
-		// fill app object for top level navigation
+		// fill app object for top feelevel navigation
 		if (this.app)
 		this.controllers.app = this.app;
 		
@@ -210,7 +226,7 @@ var Module = class {
 			throw new Error('no getClientControllers method to retrieve controllers object!');
 
 		this.clientapicontrollers = moduleclientcontrollers.getClientControllers();
-	} */
+	}
 
 	_getClientAPI() {
 		if (this.clientapicontrollers)
@@ -542,9 +558,9 @@ var Module = class {
 
 	
 	// events
-	signalEvent(event) {
+	signalEvent(eventname, params) {
 		var global = this.global;
-		global.signalEvent(event);
+		global.signalEvent(eventname, params);
 	}
 	
 	registerEventListener(eventname, listerneruuid, callback) {
@@ -879,21 +895,8 @@ var Module = class {
 		return schemeinfo;
 	}
 
-	_getAverageTransactionFee(scheme) {
-		// TODO: for version >= 0.20.7 replace with
-		// return scheme.getAverageTransactionFee()
-		var global = this.global;
-		var ethnodemodule = global.getModuleObject('ethnode');
-		
-		var Scheme = global.getModuleClass('wallet', 'Scheme');
-		var avg_transaction_fee = Scheme.AVG_TRANSACTION_FEE;
-
-		var ethnodeserver = scheme.getEthNodeServerConfig();
-		
-		if (ethnodeserver && ethnodeserver.avg_transaction_fee)
-			avg_transaction_fee = parseFloat(ethnodeserver.avg_transaction_fee.toString());
-
-		return avg_transaction_fee;
+	_getAverageTransactionFee(scheme, feefeelevel) {
+		return scheme.getAverageTransactionFee(feefeelevel);
 	}
 
 	_getTransactionCredits(scheme, transactionunits) {
@@ -919,7 +922,14 @@ var Module = class {
 		return ethcredit;
 	}
 
-	async getSchemeTransactionInfo(sessionuuid, schemeuuid, level = 0) {
+	async _createDecimalAmount(session, amount, decimals) {
+		var global = this.global;
+		var _apicontrollers = this._getClientAPI();
+
+		return _apicontrollers.createDecimalAmount(session, amount, decimals);
+	}
+
+	async getSchemeTransactionInfo(sessionuuid, schemeuuid, feelevel = null) {
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
 		
@@ -937,15 +947,15 @@ var Module = class {
 
 		var transactioninfo  = {};
 
-		transactioninfo.gasLimit = scheme.getGasLimit(level);
-		transactioninfo.gasPrice = scheme.getGasPrice(level);
-		transactioninfo.avg_transaction_fee = this._getAverageTransactionFee(scheme);
-		transactioninfo.units_threshold = scheme.getTransactionUnitsThreshold();
+		transactioninfo.gasLimit = scheme.getGasLimit(feelevel);
+		transactioninfo.gasPrice = scheme.getGasPrice(feelevel);
+		transactioninfo.avg_transaction_fee = this._getAverageTransactionFee(scheme, feelevel);
+		transactioninfo.units_threshold = scheme.getTransactionUnitsThreshold(feelevel);
 		
 		var ethnodemodule = global.getModuleObject('ethnode');
 
 		var weiamount = ethnodemodule.getWeiFromEther(transactioninfo.avg_transaction_fee);
-		var avg_transaction = await DecimalAmount.create(session, weiamount, 18);
+		var avg_transaction = await this._createDecimalAmount(session, weiamount, 18);
 		var credits_threshold = await avg_transaction.multiply(transactioninfo.units_threshold);
 
 		transactioninfo.credits_threshold = await credits_threshold.toInteger();
@@ -1547,6 +1557,14 @@ var Module = class {
 	// Card functions
 	//
 
+	async _getMonitoredCardSession(session, wallet, card) {
+		var cardsession = card._getSession();
+
+		return cardsession;
+	}
+
+
+
 	async getCardList(sessionuuid, walletuuid, bRefresh) {
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
@@ -2073,7 +2091,7 @@ var Module = class {
 
 	}
 
-	async transferTransactionUnits(sessionuuid, walletuuid, cardfromuuid, cardtouuid, units, feelevel = 0) {
+	async transferTransactionUnits(sessionuuid, walletuuid, cardfromuuid, cardtouuid, units, feefeelevel = null) {
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
 		
@@ -2117,7 +2135,7 @@ var Module = class {
 		if (!fromaccount)
 			return Promise.reject('card has no private key ' + cardfromuuid);
 		
-		var cardsession = await this._getMonitoredCardSession(fromcard);
+		var cardsession = await this._getMonitoredCardSession(session, wallet, fromcard);
 		var from_card_scheme = fromcard.getScheme();
 
 		// TODO: for version >= 0.20.7 use call to scheme
@@ -2134,7 +2152,7 @@ var Module = class {
 
 		var toaddress = tocard.getAddress();
 		var weiamount = ethnodemodule.getWeiFromEther(transactioninfo.avg_transaction_fee);
-		var ethamount = await DecimalAmount.create(cardsession, weiamount, 18);
+		var ethamount = await this._createDecimalAmount(cardsession, weiamount, 18);
 		ethamount.multiply(units);
 		var valuestring = await ethamount.toFixedString();
 
@@ -2142,7 +2160,7 @@ var Module = class {
 		transaction.setValue(valuestring);
 
 		// fee
-		var fee = await _apicontrollers.createSchemeFee(from_card_scheme, feelevel);
+		var fee = await _apicontrollers.createSchemeFee(from_card_scheme, feefeelevel);
 
 		transaction.setGas(fee.gaslimit);
 		transaction.setGasPrice(fee.gasPrice);
@@ -2654,12 +2672,19 @@ var Module = class {
 
 }
 
-if ( (typeof GlobalClass === 'undefined') || (!GlobalClass)) {var GlobalClass = ((typeof window !== 'undefined') && window && window.simplestore && window.simplestore.Global ? window.simplestore.Global : null);}
 
-if ( typeof GlobalClass !== 'undefined' && GlobalClass )
-GlobalClass.getGlobalObject().registerModuleObject(new Module());
+if ( typeof window !== 'undefined' && typeof window.GlobalClass !== 'undefined' && window.GlobalClass ) {
+	var _GlobalClass = window.GlobalClass;
+}
+else if (typeof window !== 'undefined') {
+	var _GlobalClass = ( window && window.simplestore && window.simplestore.Global ? window.simplestore.Global : null);
+}
+else if (typeof global !== 'undefined') {
+	// we are in node js
+	var _GlobalClass = ( global && global.simplestore && global.simplestore.Global ? global.simplestore.Global : null);
+}
 
+_GlobalClass.getGlobalObject().registerModuleObject(new Module());
 
 //dependencies
-if ( typeof GlobalClass !== 'undefined' && GlobalClass )
-GlobalClass.getGlobalObject().registerModuleDepency('mvc-client-wallet', 'common');    
+_GlobalClass.getGlobalObject().registerModuleDepency('mvc-client-wallet', 'common');    
