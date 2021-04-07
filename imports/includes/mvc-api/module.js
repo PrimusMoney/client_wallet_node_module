@@ -5,12 +5,9 @@ var Module = class {
 	
 	constructor() {
 		this.name = 'mvc-client-wallet';
-		this.current_version = "0.20.13.2021.04.07";
+		this.current_version = "0.20.14.2021.04.07";
 		
 		this.global = null; // put by global on registration
-		this.app = null;
-		
-		this.controllers = null;
 
 		this.isready = false;
 		this.isloading = false;
@@ -158,33 +155,7 @@ var Module = class {
 	
 	
 	// objects
- 	getAppObject() {
-		return this.app;
-	}
-	
-	setAppObject(app) {
-		this.app = app;
-		
-		// fill app object for top feelevel navigation
-		var controllers = this.getControllersObject();
-		
-		controllers.setAppObject(app);
-	}
-	
-	getControllersObject() {
-		if (this.controllers)
-			return this.controllers;
-		
-		var global = this.global;
-		this.controllers = new this.Controllers(global);
-		
-		// fill app object for top feelevel navigation
-		if (this.app)
-		this.controllers.app = this.app;
-		
-		return this.controllers;
-	}
-	
+ 	
 	// client module 
 	getClientModuleObject() {
 		if (this.clientmodule)
