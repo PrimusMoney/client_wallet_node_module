@@ -6,7 +6,7 @@
 class ClientModules {
 	constructor() {
 		this.name = 'clientmodules';
-		this.current_version = "0.20.14.2021.04.07";
+		this.current_version = "0.20.15.2021.04.07";
 		
 		this.global = null; // put by global on registration
 		this.isready = false;

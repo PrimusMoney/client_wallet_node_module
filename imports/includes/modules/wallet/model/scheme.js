@@ -525,13 +525,7 @@ var Scheme = class {
 		if (ethnodeserver && ethnodeserver.default_gas_limit)
 			default_gas_limit = parseInt(ethnodeserver.default_gas_limit.toString());
 
-		if (feelevel && feelevel.default_gas_limit_multiplier) {
-			var multiplier = parseInt(feelevel.default_gas_limit_multiplier);
-
-			return multiplier.default_gas_limit;
-		}
-		else
-		return default_gas_limit;
+		return default_gas_limit * (feelevel && feelevel.default_gas_limit_multiplier ? parseInt(feelevel.default_gas_limit_multiplier) : 1);
 	}
 	
 	getGasPrice(feelevel) {
@@ -541,13 +535,7 @@ var Scheme = class {
 		if (ethnodeserver && ethnodeserver.default_gas_price)
 			default_gas_price = parseInt(ethnodeserver.default_gas_price.toString());
 		
-		if (feelevel && feelevel.default_gas_price_multiplier) {
-			var multiplier = parseInt(feelevel.default_gas_price_multiplier);
-
-			return multiplier.default_gas_price;
-		}
-		else
-		return default_gas_price;
+		return default_gas_price * (feelevel && feelevel.default_gas_price_multiplier ? parseInt(feelevel.default_gas_price_multiplier) : 1);
 	}
 
 	save(callback) {

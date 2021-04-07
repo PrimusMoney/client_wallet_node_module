@@ -5,7 +5,7 @@ var Module = class {
 	
 	constructor() {
 		this.name = 'mvc-client-wallet';
-		this.current_version = "0.20.14.2021.04.07";
+		this.current_version = "0.20.15.2021.04.07";
 		
 		this.global = null; // put by global on registration
 
@@ -856,8 +856,8 @@ var Module = class {
 		return schemeinfo;
 	}
 
-	_getAverageTransactionFee(scheme, feefeelevel) {
-		return scheme.getAverageTransactionFee(feefeelevel);
+	_getAverageTransactionFee(scheme, feelevel) {
+		return scheme.getAverageTransactionFee(feelevel);
 	}
 
 	_getTransactionCredits(scheme, transactionunits) {
@@ -2052,7 +2052,7 @@ var Module = class {
 
 	}
 
-	async transferTransactionUnits(sessionuuid, walletuuid, cardfromuuid, cardtouuid, units, feefeelevel = null) {
+	async transferTransactionUnits(sessionuuid, walletuuid, cardfromuuid, cardtouuid, units, feelevel = null) {
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
 		
@@ -2121,7 +2121,7 @@ var Module = class {
 		transaction.setValue(valuestring);
 
 		// fee
-		var fee = await _apicontrollers.createSchemeFee(from_card_scheme, feefeelevel);
+		var fee = await _apicontrollers.createSchemeFee(from_card_scheme, feelevel);
 
 		transaction.setGas(fee.gaslimit);
 		transaction.setGasPrice(fee.gasPrice);
