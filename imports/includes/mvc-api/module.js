@@ -5,7 +5,7 @@ var Module = class {
 	
 	constructor() {
 		this.name = 'mvc-client-wallet';
-		this.current_version = "0.20.12.2021.04.07";
+		this.current_version = "0.20.13.2021.04.07";
 		
 		this.global = null; // put by global on registration
 		this.app = null;
@@ -67,17 +67,7 @@ var Module = class {
 		//modulescriptloader.push_script( moduleroot + '/model/models.js');
 
 		// DAPPs
-		modulescriptloader.load_scripts(function() { 
-									self.init(); 
-									mvcmodule.Models.loadModules(parentscriptloader, function() {
-										// spawning potential asynchronous operations
-										global.finalizeGlobalScopeInit(function(res) {
-											console.log("mvc module finished initialization of GlobalScope");
-											if (callback) callback(null, self);
-										});
-										
-									}); 
-								});
+		modulescriptloader.load_scripts(function() { self.init(); if (callback) callback(null, self); });
 		
 		return modulescriptloader;
 	}
