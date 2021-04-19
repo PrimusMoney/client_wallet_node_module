@@ -1,10 +1,10 @@
 {
   "name": "@primusmoney/client_wallet",
-  "version": "0.20.15",
+  "version": "0.20.16",
   "license": "UNLICENSED",
   "repository": {
     "type": "git",
-    "url": "https://github.com/primusmoney/client_wallet"
+    "url": "https://github.com/primusmoney/client_wallet_node_module"
   },
   "author": "PrimusMoney",
   "homepage": "https://www.primusmoney.com/",

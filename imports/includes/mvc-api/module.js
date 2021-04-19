@@ -5,7 +5,7 @@ var Module = class {
 	
 	constructor() {
 		this.name = 'mvc-client-wallet';
-		this.current_version = "0.20.15.2021.04.07";
+		this.current_version = "0.20.16.2021.04.19";
 		
 		this.global = null; // put by global on registration
 
@@ -55,6 +55,12 @@ var Module = class {
 		
 
 		// mvc files
+
+		// look if mvcclientwalletmoduleloader already created (e.g. for loading in node.js)
+		modulescriptloader = global.findScriptLoader('mvcclientwalletmoduleloader');
+
+		// if not, create on as child as parent script loader passed in argument
+		if (!modulescriptloader)
 		var modulescriptloader = parentscriptloader.getChildLoader('mvcclientwalletmoduleloader');
 		
 		var moduleroot = './includes';
@@ -84,11 +90,8 @@ var Module = class {
 		var global = this.global;
 		
 		// initialization
-		global.registerHook('postFinalizeGlobalScopeInit_hook', 'mvc-client-wallet', this.postFinalizeGlobalScopeInit_hook);
+		//global.registerHook('postFinalizeGlobalScopeInit_hook', this.name, this.postFinalizeGlobalScopeInit_hook);
 
-		// session
-		global.registerHook('creatingSession_hook', 'mvc-client-wallet', this.creatingSession_hook);
-		
 		// signal module is ready
 		var rootscriptloader = global.getRootScriptLoader();
 		rootscriptloader.signalEvent('on_mvc_client_wallet_module_ready');
@@ -114,45 +117,7 @@ var Module = class {
 	// hooks
 	//
 	
-	postFinalizeGlobalScopeInit_hook(result, params) {
-		console.log('postFinalizeGlobalScopeInit_hook called for ' + this.name);
-		
-		var global = this.global;
-		
-	}
-	
-	creatingSession_hook(result, params) {
-		console.log('creatingSession_hook called for ' + this.name);
-		
-		var global = this.global;
 
-		var session = params[0];
-
-		// check url parameters
-		var getUrlVars = function() {
-			var vars = {};
-			var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
-				vars[key] = value;
-			});
-			return vars;
-		};
-		
-		var params = getUrlVars();
-		
-		if (params && params['sessionuuid']) {
-			var sessionuuid = params['sessionuuid'];
-			
-			console.log('app bootstrapped with sessionuuid ' + sessionuuid);
-			
-			session.setSessionUUID(sessionuuid);
-			
-		}
-
-		result.push({module: 'mvc-client-wallet', handled: true});
-		
-		return true;
-	}
-	
 	
 	// objects
  	

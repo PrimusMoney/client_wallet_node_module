@@ -67,7 +67,7 @@ class NodeLoad {
 			var ethereum_core = this.node_module.ethereum_core;
 			
 			if (ethereum_core.initialized === false) {
-				console.log('WARNING: ethereum_core should be initialized before initializing ethereum_xtra_web');
+				console.log('WARNING: @p2pmoney-org/ethereum_core should be initialized before initializing @primusmoney/client_wallet');
 			}
 			
 			// get node module objects

@@ -68,6 +68,7 @@ var Module = class {
 
 		modulescriptloader.push_script( moduleroot + '/model/card.js');
 		modulescriptloader.push_script( moduleroot + '/model/contact.js');
+		modulescriptloader.push_script( moduleroot + '/model/decimal-amount.js');
 		modulescriptloader.push_script( moduleroot + '/model/scheme.js');
 		modulescriptloader.push_script( moduleroot + '/model/token-account.js');
 		modulescriptloader.push_script( moduleroot + '/model/transaction.js');
