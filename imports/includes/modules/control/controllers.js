@@ -1384,7 +1384,7 @@ var ModuleControllers = class {
 		
 		var walletmodule = global.getModuleObject('wallet');
 
-		return walletmodule.createDecimalAmount(session, amount, decimals);
+		return walletmodule.createDecimalAmountAsync(session, amount, decimals);
 	}
 
 	//

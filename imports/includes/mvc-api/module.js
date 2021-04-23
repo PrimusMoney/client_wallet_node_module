@@ -5,7 +5,7 @@ var Module = class {
 	
 	constructor() {
 		this.name = 'mvc-client-wallet';
-		this.current_version = "0.20.16.2021.04.19";
+		this.current_version = "0.20.17.2021.04.23";
 		
 		this.global = null; // put by global on registration
 
@@ -524,6 +524,37 @@ var Module = class {
 	//
 
 	// private keys
+	async getWalletDecryptingCard(sessionuuid, walletuuid, address) {
+		if (!sessionuuid)
+			return Promise.reject('session uuid is undefined');
+		
+		var global = this.global;
+		var mvcmodule = global.getModuleObject('mvc');
+		var _apicontrollers = this._getClientAPI();
+	
+		var session = await _apicontrollers.getSessionObject(sessionuuid);
+	
+		if (!session)
+			return Promise.reject('could not find session ' + sessionuuid);
+
+		var wallet = await _apicontrollers.getWalletFromUUID(session, walletuuid).catch(err => {});
+	
+		if (!wallet)
+			return;
+
+		var cards = await mvcmodule.getCardsWithAddress(sessionuuid, walletuuid, address).catch(err => {});
+
+		if (!cards)
+			return;
+
+		for (var i = 0; i < cards.length; i++) {
+			var _privatekey = await mvcmodule.getCardPrivateKey(sessionuuid, walletuuid, cards[i].uuid).catch(err => {});
+
+			if (_privatekey)
+				return cards[i];
+		}
+	}
+
 	async getCardPrivateKey(sessionuuid, walletuuid, carduuid) {
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
@@ -783,6 +814,86 @@ var Module = class {
 		var plaintext = _apicontrollers.rsaDecryptString(recipientaccount, senderaccount, cyphertext);
 
 		return plaintext;
+	}
+
+	async signString(sessionuuid, walletuuid, carduuid, plaintext) {
+		if (!plaintext)
+			return Promise.reject('plain text is undefined');
+
+		if (!sessionuuid)
+			return Promise.reject('session uuid is undefined');
+		
+		if (!walletuuid)
+			return Promise.reject('wallet uuid is undefined');
+		
+		if (!carduuid)
+			return Promise.reject('card uuid is undefined');
+		
+		var global = this.global;
+		var _apicontrollers = this._getClientAPI();
+
+		var session = await _apicontrollers.getSessionObject(sessionuuid);
+		
+		if (!session)
+			return Promise.reject('could not find session ' + sessionuuid);
+		
+		var wallet = await _apicontrollers.getWalletFromUUID(session, walletuuid);
+		
+		if (!wallet)
+			return Promise.reject('could not find wallet ' + walletuuid);
+		
+		var card = await wallet.getCardFromUUID(carduuid);
+		
+		if (!card)
+			return Promise.reject('could not find card ' + carduuid);
+
+		var cardaccount = card._getSessionAccountObject();
+
+		if (!cardaccount)
+			return Promise.reject('card can not sign texts ' + carduuid);
+
+		var privatekey = cardaccount.getPrivateKey();
+
+		return _apicontrollers.signString(session, privatekey, plaintext);
+	}
+
+	async validateStringSignature(sessionuuid, walletuuid, carduuid, address, plaintext, signature) {
+		if (!plaintext)
+			return Promise.reject('plain text is undefined');
+
+		if (!signature)
+			return Promise.reject('signature is undefined');
+
+		if (!sessionuuid)
+			return Promise.reject('session uuid is undefined');
+		
+		if (!walletuuid)
+			return Promise.reject('wallet uuid is undefined');
+		
+		if (!carduuid)
+			return Promise.reject('card uuid is undefined');
+		
+		var global = this.global;
+		var _apicontrollers = this._getClientAPI();
+
+		var session = await _apicontrollers.getSessionObject(sessionuuid);
+		
+		if (!session)
+			return Promise.reject('could not find session ' + sessionuuid);
+		
+		var wallet = await _apicontrollers.getWalletFromUUID(session, walletuuid);
+		
+		if (!wallet)
+			return Promise.reject('could not find wallet ' + walletuuid);
+		
+		var card = await wallet.getCardFromUUID(carduuid);
+		
+		if (!card)
+			return Promise.reject('could not find card ' + carduuid);
+
+		var address = card.getAddress();
+
+		return _apicontrollers.signString(session, address, plaintext, signature);
 	}
 
 
@@ -1118,6 +1229,54 @@ var Module = class {
 		return authorizeurl;
 	}
 
+	async _getUnitsFromCredits(session, scheme, credits) {
+		var units = scheme.getTransactionUnits(credits);
+		
+		return units;
+	}
+
+	async getUnitsFromCredits(sessionuuid, schemeuuid, credits) {
+		if (!sessionuuid)
+			return Promise.reject('session uuid is undefined');
+		
+		var global = this.global;
+		var _apicontrollers = this._getClientAPI();
+
+		var session = await _apicontrollers.getSessionObject(sessionuuid);
+		
+		if (!session)
+			return Promise.reject('could not find session ' + sessionuuid);
+
+		var	scheme = await _apicontrollers.getSchemeFromUUID(session, schemeuuid)
+		.catch(err => {});
+
+		if (!scheme)
+			return Promise.reject('could not find scheme ' + schemeuuid);
+
+		return this._getUnitsFromCredits(session, scheme, credits);
+	}
+
+	async getCreditsFromUnits(sessionuuid, schemeuuid, units) {
+		if (!sessionuuid)
+			return Promise.reject('session uuid is undefined');
+		
+		var global = this.global;
+		var _apicontrollers = this._getClientAPI();
+
+		var session = await _apicontrollers.getSessionObject(sessionuuid);
+		
+		if (!session)
+			return Promise.reject('could not find session ' + sessionuuid);
+
+		var	scheme = await _apicontrollers.getSchemeFromUUID(session, schemeuuid)
+		.catch(err => {});
+
+		if (!scheme)
+			return Promise.reject('could not find scheme ' + schemeuuid);
+
+		return scheme.getTransactionCreditsAsync(units);
+	}
+	
 	
 	//
 	// Wallet functions
@@ -1281,12 +1440,16 @@ var Module = class {
 
 		var commonmodule = global.getModuleObject('common');
 
-		var session = await commonmodule.createBlankSessionObject();
+		// look if session already exists
+		var session = await _apicontrollers.getSessionObject(sessionuuid);
+
+		if (!session) {
+			session = await commonmodule.createBlankSessionObject();
+			session.setSessionUUID(sessionuuid);
+		}
 
 		if (!session)
 			return Promise.reject('could not create session ' + sessionuuid);
-
-		session.setSessionUUID(sessionuuid);
 
 		var walletmodule = global.getModuleObject('wallet');
 		var Wallet = global.getModuleClass('wallet', 'Wallet');
@@ -1424,7 +1587,13 @@ var Module = class {
 
 		var commonmodule = global.getModuleObject('common');
 
-		var session = await commonmodule.createBlankSessionObject();
+		// look if session already exists
+		var session = await _apicontrollers.getSessionObject(sessionuuid);
+
+		if (!session) {
+			session = await commonmodule.createBlankSessionObject();
+			session.setSessionUUID(sessionuuid);
+		}
 
 		if (!session)
 			return Promise.reject('could not create session ' + sessionuuid);
