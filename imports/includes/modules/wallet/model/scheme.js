@@ -11,6 +11,7 @@ var Scheme = class {
 	
 	static get DEFAULT_GAS_LIMIT() { return 4850000;}
 	static get DEFAULT_GAS_PRICE() { return 10000000000;}
+	static get DEFAULT_GAS_UNIT() { return 21000;}
 
 	static get AVG_TRANSACTION_FEE() { return 0.00021;}
 
@@ -27,39 +28,24 @@ var Scheme = class {
 		this.name = null;
 		this.label = null;
 
-		// TODO: migrate to internal network config
+		// internal network config
 		// to transparently forward additional parameters
 		this.network = {};
 
 		this.network.restserver = restserver;
 		this.network.authserver = authserver;
 		this.network.keyserver = keyserver;
+		
 		this.network.ethnodeserver = ethnodeserver;
 
 		// check activation flags
 		this.network.restserver.activate = (typeof restserver.activate !== 'undefined' ? restserver.activate : false);
 		this.network.authserver.activate = (typeof authserver.activate !== 'undefined' ? authserver.activate : false);
 		this.network.authserver.activate = (typeof keyserver.activate !== 'undefined' ? keyserver.activate : false);
+		
 		this.network.ethnodeserver.activate = (typeof ethnodeserver.activate !== 'undefined' ? ethnodeserver.activate : false);
 
-		// deprecate below
-/* 
-		// rest (storage)
-		this.activate_rest_server = (typeof restserver.activate !== 'undefined' ? restserver.activate : false);
-		this.rest_server_url = restserver.rest_server_url;
-		this.rest_server_api_path = restserver.rest_server_api_path;
-		
-		// authkey
-		this.activate_auth_server = (typeof authserver.activate !== 'undefined' ? authserver.activate : false);
-		this.auth_rest_server_url = (authserver ? authserver.rest_server_url : this.rest_server_url);
-		this.auth_rest_server_api_path = (authserver ? authserver.rest_server_api_path : this.rest_server_url);
-		
-		this.activate_key_server = (typeof keyserver.activate !== 'undefined' ? keyserver.activate : false);
-		this.key_rest_server_url = (keyserver ? keyserver.rest_server_url : this.rest_server_url);
-		this.key_rest_server_api_path = (keyserver ? keyserver.rest_server_api_path : this.rest_server_url);
-		
-		// ethnode
-		this.setEthNodeServerConfig(ethnodeserver);*/
+		this.web3providerobject = null;
 
 		// additional data
 		
@@ -134,14 +120,6 @@ var Scheme = class {
 	getLocalJson() {
 		var json = {};
 		
-/* 		json.restserver = {activate: this.activate_rest_server, rest_server_url: this.rest_server_url, rest_server_api_path: this.rest_server_api_path};
-		json.authserver = {activate: this.activate_auth_server, rest_server_url: this.auth_rest_server_url, rest_server_api_path: this.auth_rest_server_api_path};
-		json.keyserver = {activate: this.activate_key_server, rest_server_url: this.key_rest_server_url, rest_server_api_path: this.key_rest_server_api_path};
- 
-		json.ethnodeserver = (this.ethnodeserver ? this.ethnodeserver : {})
-		json.ethnodeserver = Object.assign(json.ethnodeserver, {activate: this.activate_ethnode_server, web3_provider_url: this.ethnode_web3_provider_url, rest_server_url: this.ethnode_rest_server_url, rest_server_api_path: this.ethnode_rest_server_api_path});
-*/
-
 		json.restserver = Object.assign({}, this.network.restserver);
 		json.authserver = Object.assign({}, this.network.authserver);
 		json.keyserver = Object.assign({}, this.network.keyserver);
@@ -167,11 +145,6 @@ var Scheme = class {
 		network.keyserver = Object.assign({}, this.network.keyserver);
 		network.ethnodeserver = Object.assign({}, this.network.ethnodeserver);
 		
-/* 		network.restserver = {activate: this.activate_rest_server, rest_server_url: this.rest_server_url, rest_server_api_path: this.rest_server_api_path};
-		network.authserver = {activate: this.activate_auth_server, rest_server_url: this.auth_rest_server_url, rest_server_api_path: this.auth_rest_server_api_path};
-		network.keyserver = {activate: this.activate_key_server, rest_server_url: this.key_rest_server_url, rest_server_api_path: this.key_rest_server_api_path};
-		network.ethnodeserver = {activate: this.activate_ethnode_server, web3_provider_url: this.ethnode_web3_provider_url, rest_server_url: this.ethnode_rest_server_url, rest_server_api_path: this.ethnode_rest_server_api_path};
- */		
 		network.uuid = this.uuid;
 		
 		return network;
@@ -233,24 +206,40 @@ var Scheme = class {
 	
 	setEthNodeServerConfig(ethnodeserver) {
 		this.network.ethnodeserver = ethnodeserver;
-
-		// deprecate below
-/* 		this.ethnodeserver = ethnodeserver;
-		this.activate_ethnode_server = (typeof ethnodeserver.activate !== 'undefined' ? ethnodeserver.activate : false);
-		this.ethnode_web3_provider_url = ethnodeserver.web3_provider_url;
-		this.ethnode_rest_server_url = (ethnodeserver ? ethnodeserver.rest_server_url : this.rest_server_url);
-		this.ethnode_rest_server_api_path = (ethnodeserver ? ethnodeserver.rest_server_api_path : this.rest_server_url);
- */	}
+	}
 	
 	// web3 provider
 	getWeb3ProviderUrl() {
-		return this.network.ethnodeserver.web3_provider_url;
-		//return this.ethnode_web3_provider_url;
+		if (this.web3providerobject)
+		return this.web3providerobject.getWeb3ProviderUrl();
+
+		var _web3_provider_url = this.network.ethnodeserver.web3_provider_url;
+
+		// get provider object and set chainid and networkid
+		// to be used by EthereumTransaction
+		var global = this.global;
+		var session = this._getSession();
+
+		var ethnodemodule = global.getModuleObject('ethnode');
+
+		this.web3providerobject = ethnodemodule.getWeb3ProviderObject(session, _web3_provider_url);
+
+		if (this.network.ethnodeserver.chainid)
+			this.web3providerobject.setVariable('chainid', parseInt(this.network.ethnodeserver.chainid));
+		
+		if (this.network.ethnodeserver.networkid)
+			this.web3providerobject.setVariable('networkid', parseInt(this.network.ethnodeserver.networkid));
+
+		if (this.network.ethnodeserver.auth_basic)
+			this.web3providerobject.setVariable('auth_basic', this.network.ethnodeserver.auth_basic);
+		
+		return _web3_provider_url;
 	}
 	
 	setWeb3ProviderUrl(web3providerurl) {
 		this.network.ethnodeserver.web3_provider_url = web3providerurl;
-		//this.ethnode_web3_provider_url = web3providerurl;
+
+		this.web3providerobject = null
 	}
 	
 	// rest connection
@@ -455,7 +444,6 @@ var Scheme = class {
 			avg_transaction_fee = parseFloat(ethnodeserver.avg_transaction_fee.toString());
 
 		return avg_transaction_fee * (feelevel && feelevel.avg_transaction_fee_multiplier ? parseInt(feelevel.avg_transaction_fee_multiplier) : 1);
-
 	}
 
 	async getTransactionUnitsAsync(transactioncredits) {
@@ -536,6 +524,16 @@ var Scheme = class {
 			default_gas_price = parseInt(ethnodeserver.default_gas_price.toString());
 		
 		return default_gas_price * (feelevel && feelevel.default_gas_price_multiplier ? parseInt(feelevel.default_gas_price_multiplier) : 1);
+	}
+
+	getGasUnit() {
+		var default_gas_unit = Scheme.DEFAULT_GAS_UNIT;
+		var ethnodeserver = this.getEthNodeServerConfig();
+		
+		if (ethnodeserver && ethnodeserver.gas_unit)
+			default_gas_unit = parseInt(ethnodeserver.gas_unit.toString());
+
+		return default_gas_unit;
 	}
 
 	save(callback) {

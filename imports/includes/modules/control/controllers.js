@@ -1505,6 +1505,34 @@ var ModuleControllers = class {
 		
 		return fee;
 	}
+
+	createSchemeEthereumTransaction(session, scheme, fromaccount) {
+		var global = this.global;
+		
+		var ethereumnodeaccessmodule = global.getModuleObject('ethereum-node-access');
+	
+		var ethereumtransaction =  ethereumnodeaccessmodule.getEthereumTransactionObject(session, fromaccount);
+
+		// set chainid and networkid if specified
+		var ethnodeserver = scheme.getEthNodeServerConfig();
+
+		if (ethnodeserver.chainid)
+			ethereumtransaction.setChainId(ethnodeserver.chainid);
+
+		if (ethnodeserver.networkid)
+			ethereumtransaction.setNetworkId(ethnodeserver.networkid);
+
+		// set default fee
+		var fee = await this.createSchemeFee(scheme);
+
+		ethereumtransaction.setGas(fee.gaslimit);
+		ethereumtransaction.setGasPrice(fee.gasPrice);
+
+		
+		return ethereumtransaction;
+	}
+	
+
 	
 	async isValidEthnodeRPC(session, rpcurl) {
 		var global = this.global;
@@ -1892,7 +1920,7 @@ var ModuleControllers = class {
 		cardjson.address = address;
 		cardjson.password = password;
 
-		cardjson.uuid = walletsession.guid();
+		cardjson.uuid = session.guid();
 		cardjson.label = authname;
 
 		const card_new =  Card.readFromJson(wallet, scheme, cardjson);
