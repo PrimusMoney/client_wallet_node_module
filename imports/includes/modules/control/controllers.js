@@ -496,8 +496,22 @@ var ModuleControllers = class {
 	// Storage-access
 	//
 
-	getArtifact(artifactname) {
-		return this.ethereum_core.getArtifact(artifactname);
+	getArtifact(artifactpath) {
+		var global = this.global;
+		var Ethereum_core = global.getGlobalStoredObject('Ethereum_core');
+		var ethereum_core = (Ethereum_core ? Ethereum_core.getObject() : null);
+
+		if (ethereum_core)
+		return ethereum_core.getArtifact(artifactpath);
+	}
+
+	putArtifact(artifactpath, artifactcontent) {
+		var global = this.global;
+		var Ethereum_core = global.getGlobalStoredObject('Ethereum_core');
+		var ethereum_core = (Ethereum_core ? Ethereum_core.getObject() : null);
+
+		if (ethereum_core)
+		return ethereum_core.putArtifact(artifactpath, artifactcontent);
 	}
 	
 	// stored on the local storage (either client or server side depending on session)
@@ -848,6 +862,26 @@ var ModuleControllers = class {
 		return result;
 
 		
+	}
+
+	async getEthereumContractInstance(session, address, contractpath, ethnodeserverconfig) {
+		var global = this.global;
+
+		var web3providerurl = ethnodeserverconfig.web3_provider_url;
+		var chainid = ethnodeserverconfig.chainid;
+		var networkid = ethnodeserverconfig.networkid;
+
+		var ethnodemodule = global.getModuleObject('ethnode');
+
+		var contractinstance = ethnodemodule.getContractInstance(session, address, contractpath, web3providerurl);
+		
+		if (chainid)
+		contractinstance.setChainId(chainid);
+		
+		if (networkid)
+		contractinstance.setNetworkId(networkid);
+
+		return contractinstance;
 	}
 	
 	/***************************/
@@ -1506,7 +1540,7 @@ var ModuleControllers = class {
 		return fee;
 	}
 
-	createSchemeEthereumTransaction(session, scheme, fromaccount) {
+	async createSchemeEthereumTransaction(session, scheme, fromaccount) {
 		var global = this.global;
 		
 		var ethereumnodeaccessmodule = global.getModuleObject('ethereum-node-access');
@@ -1532,7 +1566,11 @@ var ModuleControllers = class {
 		return ethereumtransaction;
 	}
 	
+	async getSchemeEthereumContractInstance(session, address, contractpath, scheme) {
+		var ethnodeserverconfig = scheme.getEthNodeServerConfig();
 
+		return this.getEthereumContractInstance(session, address, contractpath, ethnodeserverconfig);
+	}
 	
 	async isValidEthnodeRPC(session, rpcurl) {
 		var global = this.global;
