@@ -605,6 +605,16 @@ var ModuleControllers = class {
 		
 		return result;
 	}
+
+	async getEthereumNodeAccessInstance(session, web3providerurl) {
+		var global = this.global;
+		
+		var ethnodemodule = global.getModuleObject('ethnode');
+
+		var ethereumnodeaccessinstance = ethnodemodule.getEthereumNodeAccessInstance(session, web3providerurl);
+
+		return ethereumnodeaccessinstance;
+	}
 	
 	async getNodeInfo(session) {
 		var global = this.global;

@@ -215,7 +215,7 @@ var Scheme = class {
 
 		var _web3_provider_url = this.network.ethnodeserver.web3_provider_url;
 
-		// get provider object and set chainid and networkid
+		// get provider object and set its chainid and networkid
 		// to be used by EthereumTransaction
 		var global = this.global;
 		var session = this._getSession();
@@ -224,14 +224,21 @@ var Scheme = class {
 
 		this.web3providerobject = ethnodemodule.getWeb3ProviderObject(session, _web3_provider_url);
 
-		if (this.network.ethnodeserver.chainid)
+		// note: web3provider exists, only if an EthereumNodeAccessInstance has been instantiated
+		// for this web3providerurl
+
+		if (this.web3providerobject) {
+			// set chainid, networkid, auth_basic,.. if they are specified
+			if (this.network.ethnodeserver.chainid)
 			this.web3providerobject.setVariable('chainid', parseInt(this.network.ethnodeserver.chainid));
 		
-		if (this.network.ethnodeserver.networkid)
-			this.web3providerobject.setVariable('networkid', parseInt(this.network.ethnodeserver.networkid));
+			if (this.network.ethnodeserver.networkid)
+				this.web3providerobject.setVariable('networkid', parseInt(this.network.ethnodeserver.networkid));
 
-		if (this.network.ethnodeserver.auth_basic)
-			this.web3providerobject.setVariable('auth_basic', this.network.ethnodeserver.auth_basic);
+			if (this.network.ethnodeserver.auth_basic)
+				this.web3providerobject.setVariable('auth_basic', this.network.ethnodeserver.auth_basic);
+		}
+
 		
 		return _web3_provider_url;
 	}
