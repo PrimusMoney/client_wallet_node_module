@@ -5,7 +5,7 @@ var Module = class {
 	
 	constructor() {
 		this.name = 'mvc-client-wallet';
-		this.current_version = "0.30.3.2021.05.15";
+		this.current_version = "0.30.8.2021.06.09";
 		
 		this.global = null; // put by global on registration
 
@@ -966,6 +966,136 @@ var Module = class {
 		return _apicontrollers.createDecimalAmount(session, amount, decimals);
 	}
 
+	_compareUrl(url1, url2) {
+		var _url1 = (url1 && url1.endsWith('/') ? url1.substring(0, url1.length - 1 ) : url1);
+		var _url2 = (url2 && url2.endsWith('/') ? url2.substring(0, url2.length - 1 ) : url2);
+
+		if (_url1 && _url2 && (_url1 == _url2))
+		return true;
+		else
+		return false;
+	}
+
+	async findLocalSchemeInfoFromWeb3Url(sessionuuid, web3url, options) {
+		if (!sessionuuid)
+			return Promise.reject('session uuid is undefined');
+		
+		var global = this.global;
+		var _apicontrollers = this._getClientAPI();
+
+
+		var session = await _apicontrollers.getSessionObject(sessionuuid);
+		
+		if (!session)
+			return Promise.reject('could not find session ' + sessionuuid);
+
+		var scheme;
+
+		// get list of local schemes
+		var localschemes = await _apicontrollers.getLocalSchemeList(session, true);
+
+		for (var i = 0; i < localschemes.length; i++) {
+			var networkconfig = localschemes[i].getNetworkConfig();
+			var ethnodeserverconfig = networkconfig.ethnodeserver;
+
+			if (this._compareUrl(web3_provider_url, web3url)) {
+				// validate scheme matches options
+				var bValid = true;
+				var _keys = (options ? Object.keys(options) : []);
+
+				for (var j = 0; j < _keys.length; j++) {
+					if (options[_keys[j]] && (options[_keys[j]] != ethnodeserverconfig[_keys[j]]) ) {
+						bValid = false;
+						break;
+					}
+				}
+
+				if (bValid) {
+					scheme = localschemes[i];
+					break;
+				}
+			}
+		}
+
+		if (!scheme)
+			return Promise.reject('could not find scheme for ' + web3url);
+
+		var mvcclientwalletmodule = global.getModuleObject('mvc-client-wallet');
+		var schemeuuid = scheme.getSchemeUUID();
+
+		return mvcclientwalletmodule.getSchemeInfo(sessionuuid, schemeuuid);
+	}
+
+	async buildSchemeFromWeb3Url(sessionuuid, walletuuid, web3url, options) {
+		if (!sessionuuid)
+			return Promise.reject('session uuid is undefined');
+		
+		if (!walletuuid)
+			return Promise.reject('wallet uuid is undefined');
+		
+		var global = this.global;
+		var _apicontrollers = this._getClientAPI();
+
+		var session = await _apicontrollers.getSessionObject(sessionuuid);
+		
+		if (!session)
+			return Promise.reject('could not find session ' + sessionuuid);
+
+
+		var wallet = await _apicontrollers.getWalletFromUUID(session, walletuuid);
+	
+		if (!wallet)
+			return Promise.reject('could not find wallet ' + walletuuid);
+			
+		
+		// clone scheme first
+		var defaultlocalscheme = await _apicontrollers.getDefaultScheme(session, 0); // 0 = local
+		
+		var scheme = await defaultlocalscheme.cloneOnWeb3ProviderUrl(web3url)
+		.catch(err => {});
+
+		if (!scheme)
+			return Promise.reject('could not create scheme for ' + web3url);
+		
+		// change default ethnodeserver
+		var ethnodeserverconfig = scheme.getEthNodeServerConfig();
+
+		// set transaction info
+		ethnodeserverconfig.default_gas_limit = (options.default_gas_limit ?  options.default_gas_limit : 21000);
+		ethnodeserverconfig.default_gas_price = (options.default_gas_price ?  options.default_gas_price : 1000000000);
+		ethnodeserverconfig.avg_transaction_fee = (options.avg_transaction_fee ?  options.avg_transaction_fee : 0.000021000);
+		ethnodeserverconfig.transaction_units_min = (options.transaction_units_min ?  options.transaction_units_min : 2);
+
+
+		// set chainid and networkid (not done at this time in cloneOnWeb3ProviderUrl 2021.05.16)
+		var childsession = await this._getMonitoredSchemeSession(session, wallet, scheme);
+		
+		var ethereumnodeaccessmodule = global.getModuleObject('ethereum-node-access');
+		var ethereumnodeaccessinstance = ethereumnodeaccessmodule.getEthereumNodeAccessInstance(childsession)
+
+		if (options.chainid)
+		ethnodeserverconfig.chainid = options.chainid;
+		else
+		ethnodeserverconfig.chainid = await ethereumnodeaccessinstance.web3_getChainId();
+
+		if (options.networkid)
+		ethnodeserverconfig.networkid = options.networkid;
+		else
+		ethnodeserverconfig.networkid = await ethereumnodeaccessinstance.web3_getNetworkId();
+
+		// save scheme with modified parameters
+		await scheme.save();
+
+		// return scheme info
+		var mvcclienwallet = global.getModuleObject('mvc-client-wallet');
+
+		var schemeinfo = {uuid: scheme.getSchemeUUID()};
+
+		mvcclienwallet._fillSchemeInfoFromScheme(schemeinfo, scheme);
+
+		return schemeinfo;
+	}
+
 	async getSchemeTransactionInfo(sessionuuid, schemeuuid, feelevel = null) {
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
@@ -1277,6 +1407,432 @@ var Module = class {
 		return scheme.getTransactionCreditsAsync(units);
 	}
 	
+
+	async _getRecommendedSchemeFeeLevel(session, wallet, scheme, tx_fee) {
+		// standard fee level
+		var	feelevel = {
+			default_gas_limit_multiplier: 1,
+			default_gas_price_multiplier: 1,
+			avg_transaction_fee_multiplier: 1, 
+			transaction_units_min_multiplier: 1
+		};
+
+		// get scheme transaction info
+		var sessionuuid = session.getSessionUUID();
+		var card_scheme = scheme;
+		var tx_info = await this.getSchemeTransactionInfo(sessionuuid, card_scheme.uuid, feelevel);
+
+		var gasLimit = tx_info.gasLimit;
+		var gasPrice = tx_info.gasPrice;
+		var avg_transaction_fee = tx_info.avg_transaction_fee;
+
+		var gas_unit = (card_scheme && card_scheme.network && card_scheme.network.ethnodeserver && card_scheme.network.ethnodeserver.gas_unit ? parseInt(card_scheme.network.ethnodeserver.gas_unit) : 21000);
+		var credit_cost_unit_ratio = (avg_transaction_fee * 1000000000000000000) / (gas_unit * gasPrice);
+
+		// execution cost
+		var units_exec_fee; 
+		var credits_exec_fee;
+		
+		if (tx_fee.estimated_cost_credits) {
+			credits_exec_fee = tx_fee.estimated_cost_credits;
+			units_exec_fee = await this._getUnitsFromCredits(session, card_scheme, credits_exec_fee);
+		}
+		else {
+			units_exec_fee = (tx_fee.estimated_cost_units ? Math.ceil(tx_fee.estimated_cost_units / credit_cost_unit_ratio) : 1);
+			credits_exec_fee = await card_scheme.getTransactionCreditsAsync(units_exec_fee);
+		}
+
+		// max price
+		var credits_max_fee = gasLimit * gasPrice;
+		var units_max_fee =  await this._getUnitsFromCredits(session, card_scheme, credits_max_fee);
+
+		if (units_exec_fee > units_max_fee)
+			feelevel.default_gas_limit_multiplier = Math.ceil(units_exec_fee / units_max_fee);
+
+		return feelevel;
+	}
+
+	async getRecommendedSchemeFeeLevel(sessionuuid, walletuuid, schemeuuid, tx_fee) {
+		if (!sessionuuid)
+			return Promise.reject('session uuid is undefined');
+		
+		if (!walletuuid)
+			return Promise.reject('wallet uuid is undefined');
+
+		if (!schemeuuid)
+			return Promise.reject('scheme uuid is undefined');
+		
+		var global = this.global;
+		var _apicontrollers = this._getClientAPI();
+
+		var session = await _apicontrollers.getSessionObject(sessionuuid);
+		
+		if (!session)
+			return Promise.reject('could not find session ' + sessionuuid);
+		
+		var wallet = await _apicontrollers.getWalletFromUUID(session, walletuuid);
+		
+		if (!wallet)
+			return Promise.reject('could not find wallet ' + walletuuid);
+	
+		var	scheme = await _apicontrollers.getSchemeFromUUID(session, schemeuuid)
+		.catch(err => {});
+
+		if (!scheme)
+			return Promise.reject('could not find scheme ' + schemeuuid);
+		
+	
+		return this._getRecommendedSchemeFeeLevel(session, wallet, scheme, tx_fee);
+	}
+
+	async computeSchemeTransactionFee(sessionuuid, walletuuid, schemeuuid, tx_fee, feelevel = null) {
+		if (!sessionuuid)
+			return Promise.reject('session uuid is undefined');
+		
+		if (!walletuuid)
+			return Promise.reject('wallet uuid is undefined');
+
+		if (!schemeuuid)
+			return Promise.reject('scheme uuid is undefined');
+		
+		var global = this.global;
+		var _apicontrollers = this._getClientAPI();
+
+		var session = await _apicontrollers.getSessionObject(sessionuuid);
+		
+		if (!session)
+			return Promise.reject('could not find session ' + sessionuuid);
+		
+		var wallet = await _apicontrollers.getWalletFromUUID(session, walletuuid);
+		
+		if (!wallet)
+			return Promise.reject('could not find wallet ' + walletuuid);
+	
+		var	scheme = await _apicontrollers.getSchemeFromUUID(session, schemeuuid)
+		.catch(err => {});
+
+		if (!scheme)
+			return Promise.reject('could not find scheme ' + schemeuuid);
+	
+		// get scheme transaction info
+		var card_scheme = scheme;
+		var tx_info = await this.getSchemeTransactionInfo(sessionuuid, card_scheme.uuid, feelevel);
+
+		var gasLimit = tx_info.gasLimit;
+		var gasPrice = tx_info.gasPrice;
+		var avg_transaction_fee = tx_info.avg_transaction_fee;
+
+		var gas_unit = (card_scheme && card_scheme.network && card_scheme.network.ethnodeserver && card_scheme.network.ethnodeserver.gas_unit ? parseInt(card_scheme.network.ethnodeserver.gas_unit) : 21000);
+		var credit_cost_unit_ratio = (avg_transaction_fee * gasPrice) / gas_unit;
+
+		// execution cost
+		var units_exec_fee; 
+		var credits_exec_fee;
+		
+		if (tx_fee.estimated_cost_credits) {
+			credits_exec_fee = tx_fee.estimated_cost_credits;
+			units_exec_fee = await this._getUnitsFromCredits(session, card_scheme, credits_exec_fee);
+		}
+		else {
+			units_exec_fee = (tx_fee.estimated_cost_units ? Math.ceil(tx_fee.estimated_cost_units / credit_cost_unit_ratio) : 1);
+			credits_exec_fee = await card_scheme.getTransactionCreditsAsync(units_exec_fee);
+		}
+
+		// transferred value
+		var units_transferred;
+		var credits_transferred;
+
+		if (tx_fee.transferred_credits) {
+			credits_transferred = tx_fee.transferred_credits;
+			units_transferred = await this._getUnitsFromCredits(session, card_scheme, credits_exec_fee);
+		}
+		else {
+			units_transferred = tx_fee.transferred_credit_units;
+			credits_transferred = await card_scheme.getTransactionCreditsAsync(units_transferred);
+		}
+
+		// max price
+		var credits_max_fee = gasLimit * gasPrice;
+		var units_max_fee =  await this._getUnitsFromCredits(session, card_scheme, credits_max_fee);
+
+		// fill tx_fee
+		tx_fee.tx_info = tx_info;
+
+		tx_fee.estimated_fee = {};
+
+		// estimated execution fee
+		tx_fee.estimated_fee.execution_units = units_exec_fee; 
+		tx_fee.estimated_fee.execution_credits = credits_exec_fee; 
+
+		// estimated transaction total
+		tx_fee.estimated_fee.total_credits = credits_exec_fee + credits_transferred; 
+		tx_fee.estimated_fee.total_units = await this._getUnitsFromCredits(session, card_scheme, tx_fee.estimated_fee.total_credits); 
+
+		// max fee
+		tx_fee.estimated_fee.max_units = units_max_fee; 
+		tx_fee.estimated_fee.max_credits = credits_max_fee; 
+
+		// required balance
+		if (tx_fee.estimated_fee.max_credits > tx_fee.estimated_fee.total_credits) {
+			tx_fee.required_credits = tx_fee.estimated_fee.max_credits;
+		}
+		else {
+			if (tx_fee.estimated_fee.max_credits >= tx_fee.estimated_fee.execution_credits)
+				tx_fee.required_credits = tx_fee.estimated_fee.max_credits + credits_transferred; // because of "Insufficient funds for gas * price + value" web3 error
+			else {
+				tx_fee.required_credits = tx_fee.estimated_fee.total_credits; // won't go through because will reach gas limit
+				tx_fee.limit_overdraft = true;
+			}
+		}
+		
+		tx_fee.required_units =  await this._getUnitsFromCredits(session, card_scheme, tx_fee.required_credits); 
+
+		return tx_fee;
+	}
+	
+	async canCompleteSchemeTransaction(sessionuuid, walletuuid, schemeuuid, fromprivatekey, tx_fee, feelevel = null) {
+		if (!sessionuuid)
+			return Promise.reject('session uuid is undefined');
+		
+		if (!walletuuid)
+			return Promise.reject('wallet uuid is undefined');
+
+		if (!schemeuuid)
+			return Promise.reject('scheme uuid is undefined');
+
+		var global = this.global;
+		var _apicontrollers = this._getClientAPI();
+
+		var session = await _apicontrollers.getSessionObject(sessionuuid);
+		
+		if (!session)
+			return Promise.reject('could not find session ' + sessionuuid);
+		
+		var wallet = await _apicontrollers.getWalletFromUUID(session, walletuuid);
+		
+		if (!wallet)
+			return Promise.reject('could not find wallet ' + walletuuid);
+	
+		var	scheme = await _apicontrollers.getSchemeFromUUID(session, schemeuuid)
+		.catch(err => {});
+
+		if (!scheme)
+			return Promise.reject('could not find scheme ' + schemeuuid);
+		
+	
+		var childsession = await this._getMonitoredSchemeSession(session, wallet, scheme);
+		
+		// get account for privatekey
+		var account = childsession.createBlankAccountObject();
+		if (!account)
+			return Promise.reject('could not create account object');
+
+		account.setPrivateKey(fromprivatekey);
+
+		if (account.isPrivateKeyValid() !== true)
+			return Promise.reject('invalid private key');
+
+		const balance_transactioncredits = await _apicontrollers.getEthAccountTransactionCredits(childsession, account);
+		const balance_transactionunits = await scheme.getTransactionUnitsAsync(balance_transactioncredits);
+	
+		// get transaction fee
+		var tx_fee = await this.computeSchemeTransactionFee(sessionuuid, walletuuid, schemeuuid, tx_fee, feelevel);
+
+		// check estimated cost is not above max credits (corresponds to tx_fee.limit_overdraft == true)
+		if (tx_fee.estimated_fee.execution_credits > tx_fee.estimated_fee.max_credits) {
+			return false;
+		}
+
+		// check balance in units is above requirement
+		if (balance_transactionunits < tx_fee.required_units) {
+			return false;
+		}
+
+		// check
+		var tx_info = tx_fee.tx_info;
+		var scheme_units_threshold = tx_info.units_threshold;
+		var scheme_credits_threshold = tx_info.credits_threshold;
+
+		if (scheme_credits_threshold > balance_transactioncredits) {
+			if (tx_fee.threshold_enforced === true) {
+				tx_fee.required_units = scheme_credits_threshold;
+				return false;
+			}
+			else {
+				tx_fee.threshold_unmet = true;
+			}
+		}
+
+
+		return true;
+	}
+
+	async transferSchemeTransactionUnits(sessionuuid, walletuuid, schemeuuid, fromprivatekey, toaddress, units, feelevel = null) {
+		if (!sessionuuid)
+			return Promise.reject('session uuid is undefined');
+		
+		if (!walletuuid)
+			return Promise.reject('wallet uuid is undefined');
+
+		if (!schemeuuid)
+			return Promise.reject('scheme uuid is undefined');
+		
+		var global = this.global;
+		var _apicontrollers = this._getClientAPI();
+
+		var session = await _apicontrollers.getSessionObject(sessionuuid);
+		
+		if (!session)
+			return Promise.reject('could not find session ' + sessionuuid);
+		
+		var wallet = await _apicontrollers.getWalletFromUUID(session, walletuuid);
+		
+		if (!wallet)
+			return Promise.reject('could not find wallet ' + walletuuid);
+	
+		var	scheme = await _apicontrollers.getSchemeFromUUID(session, schemeuuid)
+		.catch(err => {});
+
+		if (!scheme)
+			return Promise.reject('could not find scheme ' + schemeuuid);
+
+		// session on scheme	
+		var childsession = await this._getMonitoredSchemeSession(session, wallet, scheme);
+	
+		// get account for privatekey
+		var fromaccount = childsession.createBlankAccountObject();
+		if (!fromaccount)
+			return Promise.reject('could not create account object');
+
+		fromaccount.setPrivateKey(fromprivatekey);
+
+		if (fromaccount.isPrivateKeyValid() !== true)
+			return Promise.reject('invalid private key');
+
+		// create transaction object
+		var transactioninfo = await this.getSchemeTransactionInfo(sessionuuid, schemeuuid);
+		var transaction = _apicontrollers.createEthereumTransaction(childsession, fromaccount);
+		
+		// parameters
+		var ethnodemodule = global.getModuleObject('ethnode');
+
+		var weiamount = ethnodemodule.getWeiFromEther(transactioninfo.avg_transaction_fee);
+		var ethamount = await this._createDecimalAmount(childsession, weiamount, 18);
+		ethamount.multiply(units);
+		var valuestring = await ethamount.toFixedString();
+
+		transaction.setToAddress(toaddress);
+		transaction.setValue(valuestring);
+
+		// fee
+		var fee = await _apicontrollers.createSchemeFee(scheme, feelevel);
+
+		transaction.setGas(fee.gaslimit);
+		transaction.setGasPrice(fee.gasPrice);
+
+		
+		const txhash = await _apicontrollers.sendEthereumTransaction(childsession, transaction)
+		.catch((err) => {
+			console.log('error in transferTransactionUnits: ' + err);
+		});
+
+		if (!txhash)
+			return Promise.reject('could not send ethereum transaction');
+
+		return txhash;	
+	}
+
+
+	async createSchemeERC20Token(sessionuuid, walletuuid, schemeuuid, fromprivatekey, erc20token, feelevel = null) {
+		if (!sessionuuid)
+			return Promise.reject('session uuid is undefined');
+		
+		if (!walletuuid)
+			return Promise.reject('wallet uuid is undefined');
+
+		if (!schemeuuid)
+			return Promise.reject('scheme uuid is undefined');
+		
+		var global = this.global;
+		var _apicontrollers = this._getClientAPI();
+
+		var session = await _apicontrollers.getSessionObject(sessionuuid);
+		
+		if (!session)
+			return Promise.reject('could not find session ' + sessionuuid);
+		
+		var wallet = await _apicontrollers.getWalletFromUUID(session, walletuuid);
+		
+		if (!wallet)
+			return Promise.reject('could not find wallet ' + walletuuid);
+	
+		var	scheme = await _apicontrollers.getSchemeFromUUID(session, schemeuuid)
+		.catch(err => {});
+
+		if (!scheme)
+			return Promise.reject('could not find scheme ' + schemeuuid);
+
+		// session on scheme	
+		var childsession = await this._getMonitoredSchemeSession(session, wallet, scheme);
+
+		// get account for privatekey
+		var fromaccount = childsession.createBlankAccountObject();
+		if (!fromaccount)
+			return Promise.reject('could not create account object');
+
+		fromaccount.setPrivateKey(fromprivatekey);
+
+		if (fromaccount.isPrivateKeyValid() !== true)
+			return Promise.reject('invalid private key');
+	
+		// create transaction object
+		var transaction = _apicontrollers.createEthereumTransaction(childsession, fromaccount);
+
+		// fee
+		var fee = await _apicontrollers.createSchemeFee(scheme, feelevel);
+
+		transaction.setGas(fee.gaslimit);
+		transaction.setGasPrice(fee.gasPrice);
+		
+
+		// create contract object
+		var ethnodemodule = global.getModuleObject('ethnode');
+		var erc20tokenmodule = global.getModuleObject('erc20');
+	
+		var erc20tokencontrollers = erc20tokenmodule.getControllersObject();
+
+		// unlock account
+		var password;
+		var unlocked =	await ethnodemodule.unlockAccount(childsession, fromaccount, password, 300)
+		
+		// create (local) erc20token for these values
+		var data = [];
+		
+		data['name'] = erc20token.name;
+		data['symbol'] = erc20token.symbol;
+		data['decimals'] = erc20token.decimals;
+		data['totalsupply'] = erc20token.totalsupply;
+
+		var erc20token_contract = erc20tokencontrollers.createERC20TokenObject(childsession, data);
+	
+		// deploy
+		var gasLimit = transaction.getGas();
+		var gasPrice = transaction.getGasPrice();
+		var contract_address = await erc20token_contract.deploy(fromaccount, gasLimit, gasPrice);
+
+		// relock account
+		var relocked = await ethnodemodule.lockAccount(childsession, fromaccount);
+
+		var tokenaddress = contract_address;
+		var tokenuuid = erc20token_contract.getUUID();
+
+		var result = {uuid: tokenuuid, address: tokenaddress};
+
+		return result;
+
+
+		return tokenuuid;
+	}
 	
 	//
 	// Wallet functions
@@ -2270,6 +2826,167 @@ var Module = class {
 		return Promise.reject('could not send ethereum transaction');
 
 		return txhash;
+	}
+
+	async _getRecommendedFeeLevel(session, wallet, card, tx_fee) {
+		// standard fee level
+		var	feelevel = {
+			default_gas_limit_multiplier: 1,
+			default_gas_price_multiplier: 1,
+			avg_transaction_fee_multiplier: 1, 
+			transaction_units_min_multiplier: 1
+		};
+
+		// get scheme transaction info
+		var sessionuuid = session.getSessionUUID();
+		var card_scheme = card.getScheme();
+		var tx_info = await this.getSchemeTransactionInfo(sessionuuid, card_scheme.uuid, feelevel);
+
+		var gasLimit = tx_info.gasLimit;
+		var gasPrice = tx_info.gasPrice;
+		var avg_transaction_fee = tx_info.avg_transaction_fee;
+
+		var gas_unit = (card_scheme && card_scheme.network && card_scheme.network.ethnodeserver && card_scheme.network.ethnodeserver.gas_unit ? parseInt(card_scheme.network.ethnodeserver.gas_unit) : 21000);
+		var credit_cost_unit_ratio = (avg_transaction_fee * 1000000000000000000) / (gas_unit * gasPrice);
+
+		// execution cost
+		var units_exec_fee; 
+		var credits_exec_fee;
+		
+		if (tx_fee.estimated_cost_credits) {
+			credits_exec_fee = tx_fee.estimated_cost_credits;
+			units_exec_fee = await this._getUnitsFromCredits(session, card_scheme, credits_exec_fee);
+		}
+		else {
+			units_exec_fee = (tx_fee.estimated_cost_units ? Math.ceil(tx_fee.estimated_cost_units / credit_cost_unit_ratio) : 1);
+			credits_exec_fee = await card_scheme.getTransactionCreditsAsync(units_exec_fee);
+		}
+
+		// max price
+		var credits_max_fee = gasLimit * gasPrice;
+		var units_max_fee =  await this._getUnitsFromCredits(session, card_scheme, credits_max_fee);
+
+		if (units_exec_fee > units_max_fee)
+			feelevel.default_gas_limit_multiplier = Math.ceil(units_exec_fee / units_max_fee);
+
+		return feelevel;
+	}
+
+	async getRecommendedFeeLevel(sessionuuid, walletuuid, carduuid, tx_fee) {
+		var global = this.global;
+		var _apicontrollers = this._getClientAPI();
+
+		var session = await _apicontrollers.getSessionObject(sessionuuid);
+		
+		if (!session)
+			return Promise.reject('could not find session ' + sessionuuid);
+		
+		var wallet = await _apicontrollers.getWalletFromUUID(session, walletuuid);
+		
+		if (!wallet)
+			return Promise.reject('could not find wallet ' + walletuuid);
+	
+		var card = await wallet.getCardFromUUID(carduuid);
+
+		if (!card)
+			return Promise.reject('could not find card ' + carduuid);
+
+		return this._getRecommendedFeeLevel(session, wallet, card, tx_fee);
+	}
+
+	async computeTransactionFee(sessionuuid, walletuuid, carduuid, tx_fee, feelevel = null) {
+		var global = this.global;
+		var _apicontrollers = this._getClientAPI();
+
+		var session = await _apicontrollers.getSessionObject(sessionuuid);
+		
+		if (!session)
+			return Promise.reject('could not find session ' + sessionuuid);
+		
+		var wallet = await _apicontrollers.getWalletFromUUID(session, walletuuid);
+		
+		if (!wallet)
+			return Promise.reject('could not find wallet ' + walletuuid);
+	
+		var card = await wallet.getCardFromUUID(carduuid);
+
+		if (!card)
+			return Promise.reject('could not find card ' + carduuid);
+
+		// get scheme transaction info
+		var card_scheme = card.getScheme();
+		var tx_info = await this.getSchemeTransactionInfo(sessionuuid, card_scheme.uuid, feelevel);
+
+		var gasLimit = tx_info.gasLimit;
+		var gasPrice = tx_info.gasPrice;
+		var avg_transaction_fee = tx_info.avg_transaction_fee;
+
+		var gas_unit = (card_scheme && card_scheme.network && card_scheme.network.ethnodeserver && card_scheme.network.ethnodeserver.gas_unit ? parseInt(card_scheme.network.ethnodeserver.gas_unit) : 21000);
+		var credit_cost_unit_ratio = (avg_transaction_fee * gasPrice) / gas_unit;
+
+		// execution cost
+		var units_exec_fee; 
+		var credits_exec_fee;
+		
+		if (tx_fee.estimated_cost_credits) {
+			credits_exec_fee = tx_fee.estimated_cost_credits;
+			units_exec_fee = await this._getUnitsFromCredits(session, card_scheme, credits_exec_fee);
+		}
+		else {
+			units_exec_fee = (tx_fee.estimated_cost_units ? Math.ceil(tx_fee.estimated_cost_units / credit_cost_unit_ratio) : 1);
+			credits_exec_fee = await card_scheme.getTransactionCreditsAsync(units_exec_fee);
+		}
+
+		// transferred value
+		var units_transferred;
+		var credits_transferred;
+
+		if (tx_fee.transferred_credits) {
+			credits_transferred = tx_fee.transferred_credits;
+			units_transferred = await this._getUnitsFromCredits(session, card_scheme, credits_exec_fee);
+		}
+		else {
+			units_transferred = tx_fee.transferred_credit_units;
+			credits_transferred = await card_scheme.getTransactionCreditsAsync(units_transferred);
+		}
+
+		// max price
+		var credits_max_fee = gasLimit * gasPrice;
+		var units_max_fee =  await this._getUnitsFromCredits(session, card_scheme, credits_max_fee);
+
+		// fill tx_fee
+		tx_fee.tx_info = tx_info;
+
+		tx_fee.estimated_fee = {};
+
+		// estimated execution fee
+		tx_fee.estimated_fee.execution_units = units_exec_fee; 
+		tx_fee.estimated_fee.execution_credits = credits_exec_fee; 
+
+		// estimated transaction total
+		tx_fee.estimated_fee.total_credits = credits_exec_fee + credits_transferred; 
+		tx_fee.estimated_fee.total_units = await this._getUnitsFromCredits(session, card_scheme, tx_fee.estimated_fee.total_credits); 
+
+		// max fee
+		tx_fee.estimated_fee.max_units = units_max_fee; 
+		tx_fee.estimated_fee.max_credits = credits_max_fee; 
+
+		// required balance
+		if (tx_fee.estimated_fee.max_credits > tx_fee.estimated_fee.total_credits) {
+			tx_fee.required_credits = tx_fee.estimated_fee.max_credits;
+		}
+		else {
+			if (tx_fee.estimated_fee.max_credits >= tx_fee.estimated_fee.execution_credits)
+				tx_fee.required_credits = tx_fee.estimated_fee.max_credits + credits_transferred; // because of "Insufficient funds for gas * price + value" web3 error
+			else {
+				tx_fee.required_credits = tx_fee.estimated_fee.total_credits; // won't go through because will reach gas limit
+				tx_fee.limit_overdraft = true;
+			}
+		}
+		
+		tx_fee.required_units =  await this._getUnitsFromCredits(session, card_scheme, tx_fee.required_credits); 
+
+		return tx_fee;
 	}
 
 	

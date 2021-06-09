@@ -1,5 +1,6 @@
 /**
  * @author PrimusMoney
+ * @name @primusmoney/client_wallet
  * @homepage https://www.primusmoney.com/
  * @license UNLICENSED
  */

@@ -670,6 +670,19 @@ var ModuleControllers = class {
 		
 		return result;
 	}
+
+	async getEthAccountTransactionCredits(session, account) {
+		var global = this.global;
+		var ethnodemodule = global.getModuleObject('ethnode');
+		
+		var ethereumnodeaccess  = ethnodemodule.getEthereumNodeAccessInstance(session);
+		var address = account.getAddress();
+		var balance = await ethereumnodeaccess.web3_getBalance(address);
+
+		return parseInt(balance);
+	}
+
+
 	
 	async getEthAddressBalance(session, address) {
 		var global = this.global;
@@ -832,7 +845,11 @@ var ModuleControllers = class {
 				else {
 					var ethereumnodeaccessmodule = global.getModuleObject('ethereum-node-access');
 					var data = res.data;
-					res.data_decoded_utf8 = ethereumnodeaccessmodule.web3ToUTF8(session, data);
+					try {
+						// can throw invalid UTF8 detected
+						res.data_decoded_utf8 = ethereumnodeaccessmodule.web3ToUTF8(session, data);
+					}
+					catch(e) {}
 				
 					resolve(res);
 				}
@@ -945,7 +962,10 @@ var ModuleControllers = class {
 				else {
 					var ethereumnodeaccessmodule = global.getModuleObject('ethereum-node-access');
 					var input = res.input;
-					res.input_decoded_utf8 = ethereumnodeaccessmodule.web3ToUTF8(session, input);
+					try {
+						res.input_decoded_utf8 = ethereumnodeaccessmodule.web3ToUTF8(session, input);
+					}
+					catch(e) {}
 				
 					resolve(res);
 				}
@@ -2000,6 +2020,23 @@ var ModuleControllers = class {
 		
 		return oauth2interface.getOAuth2AuthorizeUrl(session, params);
 	}
+
+
+	/***********************/
+	/*      Utils          */
+	/***********************/
+	compareUrl(url1, url2) {
+		var _url1 = (url1 && url1.endsWith('/') ? url1.substring(0, url1.length - 1 ) : url1);
+		var _url2 = (url2 && url2.endsWith('/') ? url2.substring(0, url2.length - 1 ) : url2);
+
+		if (_url1 && _url2 && (_url1 == _url2))
+		return true;
+		else
+		return false;
+	}
+
+	
+
 	
 
 	

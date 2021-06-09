@@ -416,6 +416,10 @@ var Scheme = class {
 		
 		// change web3 url
 		clonedscheme.setWeb3ProviderUrl(url);
+
+		// TODO: should set default transaction info
+		
+		// TODO: should set chainid and networkid in networkconfig.ethnodeserver
 		
 		// label
 		clonedscheme.label = 'Clone of ' + this.getLabel();
