@@ -5,7 +5,7 @@ var Module = class {
 	
 	constructor() {
 		this.name = 'mvc-client-wallet';
-		this.current_version = "0.30.8.2021.06.09";
+		this.current_version = "0.30.10.2021.06.30";
 		
 		this.global = null; // put by global on registration
 
@@ -1406,6 +1406,99 @@ var Module = class {
 
 		return scheme.getTransactionCreditsAsync(units);
 	}
+
+	_canWalletHandleScheme(wallet, scheme) {
+		if (!wallet || !scheme)
+			return false;
+
+		if (scheme.isRemote()) {
+			var walletschemeuuid = wallet.getSchemeUUID();
+
+			// TODO: we could look if authserver are the same
+			if (walletschemeuuid && (walletschemeuuid === scheme.getSchemeUUID()))
+				return true;
+			else
+				return false;
+		}
+		else {
+			return true;
+		}
+
+	}
+
+	async _getChildSessionOnScheme(parentsession, scheme) {
+		var global = this.global;
+		var _apicontrollers = this._getClientAPI();
+
+		if (!parentsession)
+			return Promise.reject('could not find create child of null session');
+
+		var schemesessionmap = parentsession.getSessionVariable('schemesessionmap');
+		
+		if (!schemesessionmap) {
+			schemesessionmap = Object.create(null);
+			parentsession.setSessionVariable('schemesessionmap', schemesessionmap);
+		}
+		
+		// we could look if a pre-existing session with corresponding web3providerurl could be re-used
+		var schemeuuid = scheme.getSchemeUUID();
+
+		if (schemesessionmap[schemeuuid])
+			return schemesessionmap[schemeuuid];
+
+		// else we create one and set it
+		var childsession = await _apicontrollers.createChildSessionObject(parentsession);
+		childsession.CLIENT_WALLET = this.current_version;
+
+		if (!parentsession.CLIENT_WALLET)
+			parentsession.CLIENT_WALLET = this.current_version;
+
+		var networkconfig = scheme.getNetworkConfig();
+
+		await _apicontrollers.setSessionNetworkConfig(childsession, networkconfig);
+
+		schemesessionmap[schemeuuid] = childsession;
+
+		return childsession;
+	}
+
+	async _getMonitoredSchemeSession(session, wallet, scheme) {
+		var fetchsession;
+
+		if (!scheme)
+			return Promise.reject('scheme is not defined');
+
+		if (scheme.isRemote()) {
+			if (wallet) {
+				var walletschemeuuid = wallet.getSchemeUUID();
+				var schemeuuid = scheme.getSchemeUUID();
+	
+				if (this._canWalletHandleScheme(wallet, scheme)) {
+					// use wallet session
+					fetchsession = wallet._getSession();
+				}
+				else {
+					return Promise.reject('ERR_MISSING_CREDENTIALS');
+				}
+			}
+			else {
+				return Promise.reject('ERR_MISSING_CREDENTIALS');
+			}
+		}
+		else {
+			if (wallet) {
+				var walletsession = wallet._getSession();
+				fetchsession = await this._getChildSessionOnScheme(walletsession, scheme);
+			}
+			else {
+				fetchsession = await this._getChildSessionOnScheme(session, scheme);
+			}
+		}
+
+		return fetchsession;
+	}
+
+
 	
 
 	async _getRecommendedSchemeFeeLevel(session, wallet, scheme, tx_fee) {
