@@ -703,8 +703,8 @@ var Card = class {
 						var tokenname = erc20tokenarray[i].getLocalName();
 						var tokendescription = erc20tokenarray[i].getLocalDescription();
 						
-						if ((schemeconfig.ethnodeserver.activate == true)
-								|| (schemeconfig.ethnodeserver.web3_provider_url == web3providerurl)) {
+						if (schemeconfig.ethnodeserver && ((schemeconfig.ethnodeserver.activate == true)
+								|| (schemeconfig.ethnodeserver.web3_provider_url == web3providerurl))) {
 							// only erc20 tokens with web3 provider url matching scheme's one
 							// for client schemes
 							var token = this.getTokenObject(tokenaddress);

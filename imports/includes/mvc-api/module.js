@@ -5,7 +5,7 @@ var Module = class {
 	
 	constructor() {
 		this.name = 'mvc-client-wallet';
-		this.current_version = "0.30.10.2021.06.30";
+		this.current_version = "0.30.15.2023.02.22";
 		
 		this.global = null; // put by global on registration
 
@@ -857,7 +857,7 @@ var Module = class {
 		return _apicontrollers.signString(session, privatekey, plaintext);
 	}
 
-	async validateStringSignature(sessionuuid, walletuuid, carduuid, address, plaintext, signature) {
+	async validateStringCardSignature(sessionuuid, walletuuid, carduuid, plaintext, signature) {
 		if (!plaintext)
 			return Promise.reject('plain text is undefined');
 
@@ -893,7 +893,7 @@ var Module = class {
 
 		var address = card.getAddress();
 
-		return _apicontrollers.signString(session, address, plaintext, signature);
+		return _apicontrollers.validateStringSignature(session, address, plaintext, signature);
 	}
 
 
@@ -977,6 +977,7 @@ var Module = class {
 	}
 
 	async findLocalSchemeInfoFromWeb3Url(sessionuuid, web3url, options) {
+		console.log('OBSOLETE: Module.findLocalSchemeInfoFromWeb3Url should no longer be used!');
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
 		
@@ -996,7 +997,7 @@ var Module = class {
 
 		for (var i = 0; i < localschemes.length; i++) {
 			var networkconfig = localschemes[i].getNetworkConfig();
-			var ethnodeserverconfig = networkconfig.ethnodeserver;
+			var ethnodeserverconfig = (networkconfig.ethnodeserver ? networkconfig.ethnodeserver : {});
 
 			if (this._compareUrl(web3_provider_url, web3url)) {
 				// validate scheme matches options
@@ -1027,6 +1028,7 @@ var Module = class {
 	}
 
 	async buildSchemeFromWeb3Url(sessionuuid, walletuuid, web3url, options) {
+		console.log('OBSOLETE: Module.buildSchemeFromWeb3Url should no longer be used!');
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
 		
@@ -1097,6 +1099,7 @@ var Module = class {
 	}
 
 	async getSchemeTransactionInfo(sessionuuid, schemeuuid, feelevel = null) {
+		console.log('OBSOLETE: Module.getSchemeTransactionInfo should no longer be used!');
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
 		
@@ -1206,15 +1209,18 @@ var Module = class {
 		schemeinfo.network.keyserver.rest_server_url = networkconfig.keyserver.rest_server_url;
 		schemeinfo.network.keyserver.rest_server_api_path = networkconfig.keyserver.rest_server_api_path;
 
-		schemeinfo.network.ethnodeserver = {};
-		schemeinfo.network.ethnodeserver.activate = networkconfig.ethnodeserver.activate;
-		schemeinfo.network.ethnodeserver.rest_server_url = networkconfig.ethnodeserver.rest_server_url;
-		schemeinfo.network.ethnodeserver.rest_server_api_path = networkconfig.ethnodeserver.rest_server_api_path;
-		schemeinfo.network.ethnodeserver.web3_provider_url = networkconfig.ethnodeserver.web3_provider_url;
+		if (networkconfig.ethnodeserver) {
+			schemeinfo.network.ethnodeserver = {};
+			schemeinfo.network.ethnodeserver.activate = networkconfig.ethnodeserver.activate;
+			schemeinfo.network.ethnodeserver.rest_server_url = networkconfig.ethnodeserver.rest_server_url;
+			schemeinfo.network.ethnodeserver.rest_server_api_path = networkconfig.ethnodeserver.rest_server_api_path;
+			schemeinfo.network.ethnodeserver.web3_provider_url = networkconfig.ethnodeserver.web3_provider_url;
+		}
 		
 	}
 	
 	async getSchemeTransactionUnitsThreshold(sessionuuid, schemeuuid) {
+		console.log('OBSOLETE: Module.getSchemeTransactionUnitsThreshold should no longer be used!');
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
 		
@@ -1249,6 +1255,7 @@ var Module = class {
 	}
 
 	async getSchemeInfoFromWeb3Url(sessionuuid, web3url) {
+		console.log('OBSOLETE: Module.getSchemeInfoFromWeb3Url should no longer be used!');
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
 		
@@ -1307,6 +1314,7 @@ var Module = class {
 	}
 	
 	async canSchemeHandleWeb3Url(sessionuuid, schemeuuid, web3_provider_url) {
+		console.log('OBSOLETE: Module.canSchemeHandleWeb3Url should no longer be used!');
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
 		
@@ -1366,6 +1374,7 @@ var Module = class {
 	}
 
 	async getUnitsFromCredits(sessionuuid, schemeuuid, credits) {
+		console.log('OBSOLETE: Module.getUnitsFromCredits should no longer be used!');
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
 		
@@ -1387,6 +1396,7 @@ var Module = class {
 	}
 
 	async getCreditsFromUnits(sessionuuid, schemeuuid, units) {
+		console.log('OBSOLETE: Module.getCreditsFromUnits should no longer be used!');
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
 		
@@ -1546,6 +1556,7 @@ var Module = class {
 	}
 
 	async getRecommendedSchemeFeeLevel(sessionuuid, walletuuid, schemeuuid, tx_fee) {
+		console.log('OBSOLETE: Module.getRecommendedSchemeFeeLevel should no longer be used!');
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
 		
@@ -1579,6 +1590,7 @@ var Module = class {
 	}
 
 	async computeSchemeTransactionFee(sessionuuid, walletuuid, schemeuuid, tx_fee, feelevel = null) {
+		console.log('OBSOLETE: Module.computeSchemeTransactionFee should no longer be used!');
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
 		
@@ -1684,6 +1696,7 @@ var Module = class {
 	}
 	
 	async canCompleteSchemeTransaction(sessionuuid, walletuuid, schemeuuid, fromprivatekey, tx_fee, feelevel = null) {
+		console.log('OBSOLETE: Module.canCompleteSchemeTransaction should no longer be used!');
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
 		
@@ -1761,6 +1774,7 @@ var Module = class {
 	}
 
 	async transferSchemeTransactionUnits(sessionuuid, walletuuid, schemeuuid, fromprivatekey, toaddress, units, feelevel = null) {
+		console.log('OBSOLETE: Module.transferSchemeTransactionUnits should no longer be used!');
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
 		
@@ -1837,6 +1851,7 @@ var Module = class {
 
 
 	async createSchemeERC20Token(sessionuuid, walletuuid, schemeuuid, fromprivatekey, erc20token, feelevel = null) {
+		console.log('OBSOLETE: Module.createSchemeERC20Token should no longer be used!');
 		if (!sessionuuid)
 			return Promise.reject('session uuid is undefined');
 		
@@ -1943,6 +1958,28 @@ var Module = class {
 		var wallet = await _apicontrollers.getWalletFromUUID(session, walletuuid);
 		
 		return wallet.isLocked();
+	}
+
+	async unlockWallet(sessionuuid, walletuuid, passphrase) {
+		if (!sessionuuid)
+			return Promise.reject('session uuid is undefined');
+		
+		if (!walletuuid)
+			return Promise.reject('wallet uuid is undefined');
+		
+		var _apicontrollers = this._getClientAPI();
+		var session = await _apicontrollers.getSessionObject(sessionuuid);
+
+		if (!session)
+			return Promise.reject('could not create session ' + sessionuuid);
+
+		
+		var wallet = await _apicontrollers.getWalletFromUUID(session, walletuuid);
+	
+		if (!wallet)
+			return Promise.reject('could not find wallet ' + walletuuid);
+
+		return wallet.unlock(passphrase);
 	}
 	
 	async setWalletLabel(sessionuuid, walletuuid, label) {
@@ -2186,6 +2223,7 @@ var Module = class {
 
 	async _attachSessionToWallet(session, wallet) {
 		wallet.walletsession = session;
+		session.WALLET_ATTACHED = wallet.uuid;
 
 		if (session.user) {
 			wallet.locked = false;
@@ -2658,7 +2696,7 @@ var Module = class {
 		for (var i = 0; i < localschemes.length; i++) {
 			// compare with web3_provider_url to see if we have a scheme that matches
 			var networkconfig = localschemes[i].getNetworkConfig()
-			if (networkconfig.ethnodeserver.web3_provider_url == web3_provider_url) {
+			if (networkconfig.ethnodeserver && (networkconfig.ethnodeserver.web3_provider_url == web3_provider_url)) {
 				bCreateScheme = false;
 				scheme = localschemes[i];
 				break;
@@ -2703,6 +2741,9 @@ var Module = class {
 		let cardinfo = await this.getCardInfo(sessionuuid, walletuuid, carduuid);
 		let schemeinfo = await this.getSchemeInfo(sessionuuid, cardinfo.schemeuuid);
 		
+		if (!schemeinfo.network.ethnodeserver)
+			return false;
+			
 		if (schemeinfo.network.ethnodeserver.web3_provider_url != web3_provider_url)
 			return false;
 		else

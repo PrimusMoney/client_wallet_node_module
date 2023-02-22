@@ -6,7 +6,7 @@
 class ClientModules {
 	constructor() {
 		this.name = 'clientmodules';
-		this.current_version = "0.30.10.2021.06.30";
+		this.current_version = "0.30.15.2023.02.22";
 		
 		this.global = null; // put by global on registration
 		this.isready = false;
@@ -574,7 +574,7 @@ class ClientModules {
 			resolve(session);
 		})
 		.then((session) => {
-			// webapp
+			// storage interface
 			var restserver = (network.restserver ? network.restserver : {});
 			
 			rest_server_url = (restserver.rest_server_url ? restserver.rest_server_url : null);
@@ -595,7 +595,7 @@ class ClientModules {
 			
 			return session;
 		})
-		.then((session) => {
+		/* .then((session) => {
 			// TODO: should be handled in setSessionNetworkConfig_asynchook of wallet module
 			// because this is specific to schemes
 			
@@ -604,6 +604,16 @@ class ClientModules {
 
 			var ethnodeserver = (network.ethnodeserver ? network.ethnodeserver : {});
 			if (ethnodeserver.activate) {
+
+				// fix Xtra_EthereumNodeAccess using rest_server_url, which it should not
+				// and which not set if storage deactivated
+				if (session.getXtraConfigValue('rest_server_url') === ':rest_server_url') {
+					session.xtraconfig['rest_server_url'] = ethnodeserver.rest_server_url;
+					session.xtraconfig['rest_server_api_path'] = ethnodeserver.rest_server_api_path;
+
+					// reset web3providermap
+					session.web3providermap = {};
+				}
 
 				// set web3 provider for the local session 
 				// TODO: (but remote is not authenticated yet)
@@ -629,7 +639,7 @@ class ClientModules {
 			}
 			
 			return session;
-		})
+		}) */
 		.then((session) => {
 			// authkey interface
 			var authkeymodule = global.getModuleObject('authkey');

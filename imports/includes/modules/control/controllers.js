@@ -29,6 +29,46 @@ var ModuleControllers = class {
 	}
 	
 	//
+	// Events & Hooks
+	//
+
+	// events
+	signalEvent(eventname, params) {
+		var global = this.global;
+		global.signalEvent(eventname, params);
+	}
+	
+	registerEventListener(eventname, listerneruuid, callback) {
+		var global = this.global;
+		
+		console.log('registerEventListener for event ' + eventname + ' by ' + listerneruuid);
+		
+		global.registerEventListener(eventname, listerneruuid, callback);
+	}
+	
+	unregisterEventListener(eventname, listerneruuid) {
+		var global = this.global;
+		
+		console.log('unregisterEventListener for event ' + eventname + ' by ' + listerneruuid);
+		
+		global.unregisterEventListener(eventname, listerneruuid);
+	}
+	
+	// hooks
+	async invokeHooks(hookname, result, params) {
+		var global = this.global;
+		
+		return global.invokeHooks(hookname, result, params);
+	}
+		
+	async invokeAsyncHooks(hookname, result, params) {
+		var global = this.global;
+		
+		return global.invokeAsyncHooks(hookname, result, params);
+	}
+	
+	
+	//
 	// Settings
 	//
 
@@ -1361,6 +1401,60 @@ var ModuleControllers = class {
 	// cryptokey
 	// 
 
+	async derivePrivateKey(session, passphrase, salt) {
+		const pbkdf2 = require('pbkdf2');
+
+		// TODO: we could fetch a passphrase with more entropy via a REST request
+		var _passphrase = passphrase.replace(/\s/g, '');
+		_passphrase = _passphrase.toUpperCase();
+
+		let iterations = 10000;
+		let keylength = 32;
+		let digest = 'sha512';
+
+		var _derived_private_key_buff = pbkdf2.pbkdf2Sync(_passphrase, salt, iterations, keylength, digest);
+		var _derived_private_key = '0x' + _derived_private_key_buff.toString('hex');
+
+		return _derived_private_key;
+	}
+
+	async getCryptoKeyObject(session, privatekey) {
+		var cryptokey = session.createBlankCryptoKeyObject();
+		cryptokey.setPrivateKey(privatekey);
+
+		return cryptokey;
+	}
+	
+	getPrivateKeyStoreString(session, privkey, passphrase) {
+		var cryptokey = session.createBlankCryptoKeyObject();
+		cryptokey.setPrivateKey(privkey);
+		
+		var cryptokeyencryptioninstance = session.getCryptoKeyEncryptionInstance(cryptokey);
+		
+		return cryptokeyencryptioninstance.getPrivateKeyStoreString(passphrase);
+	}
+	
+	readPrivateKeyFromStoreString(session, keystorestring, passphrase) {
+		var cryptokey = session.createBlankCryptoKeyObject();
+		var cryptokeyencryptioninstance = session.getCryptoKeyEncryptionInstance(cryptokey);
+		
+		return cryptokeyencryptioninstance.readPrivateKeyFromStoreString(keystorestring, passphrase);
+	}
+
+	generatePrivateKeyFromPassphrase(session, passphrase) {
+		var cryptokey = session.createBlankCryptoKeyObject();
+		var cryptokeyencryptioninstance = session.getCryptoKeyEncryptionInstance(cryptokey);
+		
+		return cryptokeyencryptioninstance.generatePrivateKeyFromPassphrase(passphrase);
+	}
+	
+	hash_hmac(session, hashforce, datastring, keystring) {
+		var cryptokey = session.createBlankCryptoKeyObject();
+		var cryptokeyencryptioninstance = session.getCryptoKeyEncryptionInstance(cryptokey);
+	
+		return cryptokeyencryptioninstance.hash_hmac(hashforce, datastring, keystring);
+	}
+	
 	generatePrivateKey(session) {
 		var privkey = session.generatePrivateKey();		
 		
@@ -1462,6 +1556,24 @@ var ModuleControllers = class {
 
 		return walletmodule.getSchemeList(session, bRefresh);
 	}
+
+	async getSchemeConfigList(session, bRefresh) {
+		var global = this.global;
+		
+		var walletmodule = global.getModuleObject('wallet');
+
+		var schemelist = await walletmodule.getSchemeList(session, bRefresh);
+		var array = [];
+
+		for (var i = 0; i < schemelist.length; i++) {
+			let scheme_config = schemelist[i].getJsonConfig();
+			array.push(scheme_config);
+		}
+
+		return array;
+	}
+	
+
 	
 	async getLocalSchemeList(session, bRefresh) {
 		var global = this.global;
@@ -1480,6 +1592,7 @@ var ModuleControllers = class {
 	}
 	
 	createLocalSchemeConfig(session, web3_provider_url) {
+		console.log('OBSOLETE: Controllers.createLocalSchemeConfig should no longer be used!');
 		var global = this.global;
 		
 		var walletmodule = global.getModuleObject('wallet');
@@ -1552,6 +1665,7 @@ var ModuleControllers = class {
 	}
 	
 	async getSchemeFromWeb3Url(session, web3url) {
+		console.log('OBSOLETE: Controllers.getSchemeFromWeb3Url should no longer be used!');
 		var global = this.global;
 		
 		var walletmodule = global.getModuleObject('wallet');
@@ -1560,6 +1674,7 @@ var ModuleControllers = class {
 	}
 
 	async createSchemeFee(scheme, feelevel) {
+		console.log('OBSOLETE: Controllers.createSchemeFee should no longer be used!');
 		var fee = this.createFee(feelevel);
 		
 		if (scheme) {
@@ -1571,6 +1686,7 @@ var ModuleControllers = class {
 	}
 
 	async createSchemeEthereumTransaction(session, scheme, fromaccount) {
+		console.log('OBSOLETE: Controllers.createSchemeEthereumTransaction should no longer be used!');
 		var global = this.global;
 		
 		var ethereumnodeaccessmodule = global.getModuleObject('ethereum-node-access');
@@ -1580,10 +1696,10 @@ var ModuleControllers = class {
 		// set chainid and networkid if specified
 		var ethnodeserver = scheme.getEthNodeServerConfig();
 
-		if (ethnodeserver.chainid)
+		if (ethnodeserver && ethnodeserver.chainid)
 			ethereumtransaction.setChainId(ethnodeserver.chainid);
 
-		if (ethnodeserver.networkid)
+		if (ethnodeserver && ethnodeserver.networkid)
 			ethereumtransaction.setNetworkId(ethnodeserver.networkid);
 
 		// set default fee
@@ -1597,6 +1713,7 @@ var ModuleControllers = class {
 	}
 	
 	async getSchemeEthereumContractInstance(session, address, contractpath, scheme) {
+		console.log('OBSOLETE: Controllers.getSchemeEthereumContractInstance should no longer be used!');
 		var ethnodeserverconfig = scheme.getEthNodeServerConfig();
 
 		return this.getEthereumContractInstance(session, address, contractpath, ethnodeserverconfig);
@@ -1753,6 +1870,37 @@ var ModuleControllers = class {
 				break;
 			}
 		}
+
+		if (bExists) {
+			// if walletsession is remote for storage, we must check
+			// that the account exists in the remote server
+			let walletscheme = await wallet.getScheme();
+			let networkconfig = walletscheme.getNetworkConfig();
+
+			if (networkconfig.authserver.activate && networkconfig.restserver.activate) {
+				let storageaccessmodule = global.getModuleObject('storage-access');
+
+				let walletsession = wallet._getSession();
+				let storage_access_instance = storageaccessmodule.getStorageAccessInstance(session);
+
+				let _remotestored = await storage_access_instance.account_session_keys();
+				let _remoteaccounts = _remotestored.keys;
+				let bFound = false;
+
+				for (var i = 0; i < (_remoteaccounts ? _remoteaccounts.length : 0); i++) {
+					var accountaddress = _remoteaccounts[i].address;
+					
+					if (session.areAddressesEqual(_address, accountaddress)) {
+						bFound = true;
+						break;
+					}
+				}
+
+				if (bFound === false)
+					bExists = false;
+			}
+		}
+
 		// we save a session account object
 		if (!bExists) {
 			sessionaccount = await wallet.createSessionAccountObject(privatekey);
@@ -1854,6 +2002,7 @@ var ModuleControllers = class {
 		return walletmodule.getWalletCardAsContact(session, wallet, card);
 	}
 
+	// cards
 	async importWalletCard(session, wallet, cardname, address, configurl, authname, password, options) {
 		const card = await wallet.importCard(address, configurl, authname, password, options);
 
@@ -1919,6 +2068,8 @@ var ModuleControllers = class {
 						var options = {};
 				
 						card = await wallet.importCard(address, configurl, authname, password, options);
+
+						break;
 					}
 					else
 						return Promise.reject('ERR_MISSING_CREDENTIALS');
@@ -1927,10 +2078,21 @@ var ModuleControllers = class {
 			}
 		}
 
-		return card;
+		if (card) {
+			await card.init();
+
+			if (card.isLocked()) {
+				await card.unlock();
+			}
+
+			return card
+		}
+		else
+			throw new Error('could not create card');
 	}
 
 	async createWalletCardFromPrivateKey(session, wallet, web3providerurl, privatekey) {
+		console.log('OBSOLETE: Controllers.createWalletCardFromPrivateKey should no longer be used!');
 		
 		// create a session account
 		if (this.isValidPrivateKey(session, privatekey)) {
@@ -1951,7 +2113,7 @@ var ModuleControllers = class {
 		for (var i = 0; i < localschemes.length; i++) {
 			// compare with web3_provider_url to see if we have a scheme that matches
 			var networkconfig = localschemes[i].getNetworkConfig()
-			if (networkconfig.ethnodeserver.web3_provider_url == web3providerurl) {
+			if (networkconfig.ethnodeserver && (networkconfig.ethnodeserver.web3_provider_url == web3providerurl)) {
 				bCreateScheme = false;
 				scheme = localschemes[i];
 				break;

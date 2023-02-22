@@ -19,7 +19,7 @@ var Scheme = class {
 		// AVG_TRANSACTION_FEE * TRANSACTION_UNITS_MIN should be higher than DEFAULT_GAS_LIMIT * DEFAULT_GAS_PRICE
 
 	
-	constructor(module, session, restserver, authserver, keyserver, ethnodeserver) {
+	constructor(module, session, schemejson) {
 		this.module = module;
 		this.global = module.global;
 		this.session = session;
@@ -28,24 +28,26 @@ var Scheme = class {
 		this.name = null;
 		this.label = null;
 
+		// we now keep the original json
+		this.schemejson = schemejson
+
 		// internal network config
 		// to transparently forward additional parameters
 		this.network = {};
 
-		this.network.restserver = restserver;
-		this.network.authserver = authserver;
-		this.network.keyserver = keyserver;
-		
-		this.network.ethnodeserver = ethnodeserver;
+		var restserver = schemejson.restserver;
+		var authserver = schemejson.authserver;
+		var keyserver = schemejson.keyserver;
 
-		// check activation flags
-		this.network.restserver.activate = (typeof restserver.activate !== 'undefined' ? restserver.activate : false);
-		this.network.authserver.activate = (typeof authserver.activate !== 'undefined' ? authserver.activate : false);
-		this.network.authserver.activate = (typeof keyserver.activate !== 'undefined' ? keyserver.activate : false);
+		// legacy
+		var ethnodeserver = schemejson.ethnodeserver; 
 		
-		this.network.ethnodeserver.activate = (typeof ethnodeserver.activate !== 'undefined' ? ethnodeserver.activate : false);
-
-		this.web3providerobject = null;
+		if (!ethnodeserver) {
+			// Obsolete: can be removed for ethereum_webapp version >= 0.14.3
+			ethnodeserver = schemejson.ethnode;
+		}
+		
+		this._setNetworkConfig(restserver, authserver, keyserver, ethnodeserver);
 
 		// additional data
 		
@@ -53,6 +55,26 @@ var Scheme = class {
 		this.configurl = null;
 		
 		this.xtra_data = {};
+	}
+
+	_setNetworkConfig(restserver, authserver, keyserver, ethnodeserver) {
+		this.network.restserver = restserver;
+		this.network.authserver = authserver;
+		this.network.keyserver = keyserver;
+
+		if (ethnodeserver)
+		this.network.ethnodeserver = ethnodeserver;
+
+		// check activation flags
+		this.network.restserver.activate = (typeof restserver.activate !== 'undefined' ? restserver.activate : false);
+		this.network.authserver.activate = (typeof authserver.activate !== 'undefined' ? authserver.activate : false);
+		this.network.authserver.activate = (typeof keyserver.activate !== 'undefined' ? keyserver.activate : false);
+		
+		if (ethnodeserver) {
+			this.network.ethnodeserver.activate = (typeof ethnodeserver.activate !== 'undefined' ? ethnodeserver.activate : false);
+
+			this.web3providerobject = null;
+		}
 	}
 	
 	_getSession() {
@@ -119,12 +141,14 @@ var Scheme = class {
 	
 	getLocalJson() {
 		var json = {};
+
+		var reserved_keys = ['restserver', 'authserver', 'keyserver', 'uuid', 'name', 'label', 'configurl', 'xtra_data'];
 		
 		json.restserver = Object.assign({}, this.network.restserver);
 		json.authserver = Object.assign({}, this.network.authserver);
 		json.keyserver = Object.assign({}, this.network.keyserver);
 
-		json.ethnodeserver = Object.assign({}, this.network.ethnodeserver);
+		//json.ethnodeserver = Object.assign({}, this.network.ethnodeserver);
  		
 		json.uuid = (this.uuid ? this.uuid : this.getSchemeUUID());
 		json.name = (this.name ? this.name : 'no name');
@@ -133,6 +157,19 @@ var Scheme = class {
 		json.configurl = this.configurl;
 		
 		json.xtra_data = this.xtra_data;
+
+		// possible additional parameters
+		if (this.schemejson) {
+			let keys = Object.keys(this.schemejson);
+
+			for (var i = 0; i < keys.length; i++) {
+				let key = keys[i];
+
+				if (!reserved_keys.includes(key)) {
+					json[key] = Object.assign({}, this.schemejson[key]);
+				}
+			}
+		}
 
 		return json;
 	}
@@ -143,11 +180,17 @@ var Scheme = class {
 		network.restserver = Object.assign({}, this.network.restserver);
 		network.authserver = Object.assign({}, this.network.authserver);
 		network.keyserver = Object.assign({}, this.network.keyserver);
-		network.ethnodeserver = Object.assign({}, this.network.ethnodeserver);
+
+		if (this.network.ethnodeserver)
+		network.ethnodeserver = Object.assign({}, this.network.ethnodeserver); // legacy
 		
 		network.uuid = this.uuid;
 		
 		return network;
+	}
+
+	getJsonConfig() {
+		return this.schemejson;
 	}
 	
 	// xtra data (available to let other modules store additional info)
@@ -199,21 +242,26 @@ var Scheme = class {
 	//
 	// ethnode
 	//
+	// OBSOLETE: should not presuppose scheme makes a particular case with ethnode
+
 	getEthNodeServerConfig() {
-		return this.network.ethnodeserver;
+		console.log('OBSOLETE: Scheme.getEthNodeServerConfig should no longer be used!');
+		return (this.network.ethnodeserver ? this.network.ethnodeserver : {});
 		//return this.ethnodeserver;
 	}
 	
 	setEthNodeServerConfig(ethnodeserver) {
+		console.log('OBSOLETE: Scheme.setEthNodeServerConfig should no longer be used!');
 		this.network.ethnodeserver = ethnodeserver;
 	}
 	
 	// web3 provider
 	getWeb3ProviderUrl() {
+		console.log('OBSOLETE: Scheme.getWeb3ProviderUrl should no longer be used!');
 		if (this.web3providerobject)
 		return this.web3providerobject.getWeb3ProviderUrl();
 
-		var _web3_provider_url = this.network.ethnodeserver.web3_provider_url;
+		var _web3_provider_url = (this.network.ethnodeserver ? this.network.ethnodeserver.web3_provider_url : null);
 
 		// get provider object and set its chainid and networkid
 		// to be used by EthereumTransaction
@@ -229,13 +277,13 @@ var Scheme = class {
 
 		if (this.web3providerobject) {
 			// set chainid, networkid, auth_basic,.. if they are specified
-			if (this.network.ethnodeserver.chainid)
+			if (this.network.ethnodeserver && this.network.ethnodeserver.chainid)
 			this.web3providerobject.setVariable('chainid', parseInt(this.network.ethnodeserver.chainid));
 		
-			if (this.network.ethnodeserver.networkid)
+			if (this.network.ethnodeserver && this.network.ethnodeserver.networkid)
 				this.web3providerobject.setVariable('networkid', parseInt(this.network.ethnodeserver.networkid));
 
-			if (this.network.ethnodeserver.auth_basic)
+			if (this.network.ethnodeserver && this.network.ethnodeserver.auth_basic)
 				this.web3providerobject.setVariable('auth_basic', this.network.ethnodeserver.auth_basic);
 		}
 
@@ -244,6 +292,8 @@ var Scheme = class {
 	}
 	
 	setWeb3ProviderUrl(web3providerurl) {
+		console.log('OBSOLETE: Scheme.setWeb3ProviderUrl should no longer be used!');
+		if (this.network.ethnodeserver)
 		this.network.ethnodeserver.web3_provider_url = web3providerurl;
 
 		this.web3providerobject = null
@@ -251,9 +301,10 @@ var Scheme = class {
 	
 	// rest connection
 	createEthNodeRestConnection(session) {
+		console.log('OBSOLETE: Scheme.createEthNodeRestConnection should no longer be used!');
 		var networkconfig = this.getNetworkConfig();
 		
-		if (!networkconfig.ethnodeserver.rest_server_url)
+		if (!networkconfig.ethnodeserver || !networkconfig.ethnodeserver.rest_server_url)
 			return;
 		
 		var restconnection = session.createRestConnection(networkconfig.ethnodeserver.rest_server_url, networkconfig.ethnodeserver.rest_server_api_path);
@@ -263,6 +314,7 @@ var Scheme = class {
 	
 	// top up
 	_getTopUpRestResource(address) {
+		console.log('OBSOLETE: Scheme._getTopUpRestResource should no longer be used!');
 		// TODO: replace with topup for version >= 0.14.5
 		var resource = "/faucet/top/" + address;
 
@@ -270,6 +322,7 @@ var Scheme = class {
 	}
 	
 	sendTopUpRequestAsync(session, address) {
+		console.log('OBSOLETE: Scheme.sendTopUpRequestAsync should no longer be used!');
 		return new Promise((resolve, reject) => {
 			var restconnection = this.createEthNodeRestConnection(session);
 
@@ -303,6 +356,7 @@ var Scheme = class {
 	
 	// minimal number of transactions
 	getTransactionUnitsThreshold(feelevel) {
+		console.log('OBSOLETE: Scheme.getTransactionUnitsThreshold should no longer be used!');
 		var number = Scheme.TRANSACTION_UNITS_MIN;
 		var ethnodeserver = this.getEthNodeServerConfig();
 		
@@ -314,6 +368,7 @@ var Scheme = class {
 	
 	
 	fetchDefaultWeb3ProviderUrl(callback) {
+		console.log('OBSOLETE: Scheme.fetchDefaultWeb3ProviderUrl should no longer be used!');
 		var web3providerurl = this.getWeb3ProviderUrl();
 		var ethnodeserver = this.getEthNodeServerConfig();
 
@@ -327,7 +382,7 @@ var Scheme = class {
 		else {
 			var session = this._getSession();
 			
-			var restconnection = session.createRestConnection(ethnodeserver.rest_server_url, ethnodeserver.rest_server_api_path);
+			var restconnection = (ethnodeserver ? session.createRestConnection(ethnodeserver.rest_server_url, ethnodeserver.rest_server_api_path) : session.createRestConnection());
 			
 			return new Promise((resolve, reject) => { 
 				restconnection.rest_get('/web3/provider', (err, res) => {
@@ -354,6 +409,7 @@ var Scheme = class {
 	}
 	
 	canHandleWeb3ProviderUrl(web3providerurl, callback) {
+		console.log('OBSOLETE: Scheme.canHandleWeb3ProviderUrl should no longer be used!');
 		return new Promise((resolve, reject) => {
 			var networkconfig = this.getNetworkConfig();
 			var schemeweb3url = networkconfig.ethnodeserver.web3_provider_url;
@@ -407,12 +463,13 @@ var Scheme = class {
 	}
 	
 	cloneOnWeb3ProviderUrl(url, callback) {
+		console.log('OBSOLETE: Scheme.cloneOnWeb3ProviderUrl should no longer be used!');
 		var walletmodule = this.module;
 		var Scheme = walletmodule.Scheme;
 
 		var networkconfig = this.getNetworkConfig();
 		
-		var clonedscheme = new Scheme(this.module, this.session, networkconfig.restserver, networkconfig.authserver, networkconfig.keyserver, networkconfig.ethnodeserver);
+		var clonedscheme = new Scheme(this.module, this.session, networkconfig);
 		
 		// change web3 url
 		clonedscheme.setWeb3ProviderUrl(url);
@@ -430,6 +487,7 @@ var Scheme = class {
 	
 	// objects
 	getTokenObject(tokenaddress, callback) {
+		console.log('OBSOLETE: Scheme.getTokenObject should no longer be used!');
 		var global = this.global;
 
 		var Token = global.getModuleClass('wallet', 'Token');
@@ -444,6 +502,7 @@ var Scheme = class {
 	
 	// utils
 	getAverageTransactionFee(feelevel) {
+		console.log('OBSOLETE: Scheme.getAverageTransactionFee should no longer be used!');
 		var global = this.global;
 		var ethnodemodule = global.getModuleObject('ethnode');
 		
@@ -458,11 +517,13 @@ var Scheme = class {
 	}
 
 	async getTransactionUnitsAsync(transactioncredits) {
+		console.log('OBSOLETE: Scheme.getTransactionUnitsAsync should no longer be used!');
 		// TODO: look if using DecimalAmount could improve the division
 		return this.getTransactionUnits(transactioncredits);
 	}
 
 	getTransactionUnits(transactioncredits) {
+		console.log('OBSOLETE: Scheme.getTransactionUnits should no longer be used!');
 		var global = this.global;
 		var ethnodemodule = global.getModuleObject('ethnode');
 		var ethcredit = ethnodemodule.getEtherFromwei(transactioncredits);
@@ -480,6 +541,7 @@ var Scheme = class {
 	}
 
 	async getTransactionCreditsAsync(transactionunits) {
+		console.log('OBSOLETE: Scheme.getTransactionCreditsAsync should no longer be used!');
 		var global = this.global;
 		var session = this._getSession();
 
@@ -501,6 +563,7 @@ var Scheme = class {
 	}
 	
 	getTransactionCredits(transactionunits) {
+		console.log('OBSOLETE: Scheme.getTransactionCredits should no longer be used!');
 		var global = this.global;
 		var ethnodemodule = global.getModuleObject('ethnode');
 		
@@ -518,6 +581,7 @@ var Scheme = class {
 	}
 	
 	getGasLimit(feelevel) {
+		console.log('OBSOLETE: Scheme.getGasLimit should no longer be used!');
 		var default_gas_limit = Scheme.DEFAULT_GAS_LIMIT;
 		var ethnodeserver = this.getEthNodeServerConfig();
 		
@@ -528,6 +592,7 @@ var Scheme = class {
 	}
 	
 	getGasPrice(feelevel) {
+		console.log('OBSOLETE: Scheme.getGasPrice should no longer be used!');
 		var default_gas_price = Scheme.DEFAULT_GAS_PRICE;
 		var ethnodeserver = this.getEthNodeServerConfig();
 		
@@ -538,6 +603,7 @@ var Scheme = class {
 	}
 
 	getGasUnit() {
+		console.log('OBSOLETE: Scheme.getGasUnit should no longer be used!');
 		var default_gas_unit = Scheme.DEFAULT_GAS_UNIT;
 		var ethnodeserver = this.getEthNodeServerConfig();
 		
@@ -546,6 +612,12 @@ var Scheme = class {
 
 		return default_gas_unit;
 	}
+
+	//
+	// end EthNode
+	//
+	// OBSOLETE: should not presuppose scheme makes a particular case with ethnode
+
 
 	save(callback) {
 		// we do an non-atomic save
@@ -559,17 +631,8 @@ var Scheme = class {
 	static readFromJson(walletmodule, session, schemejson) {
 		var Scheme = walletmodule.Scheme;
 
-		var restserver = schemejson.restserver;
-		var authserver = schemejson.authserver;
-		var keyserver = schemejson.keyserver;
-		var ethnodeserver = schemejson.ethnodeserver;
-		
-		if (!ethnodeserver) {
-			// Obsolete: can be removed for ethereum_webapp version >= 0.14.3
-			ethnodeserver = schemejson.ethnode;
-		}
-		
-		var scheme = new Scheme(walletmodule, session, restserver, authserver, keyserver, ethnodeserver);
+
+		var scheme = new Scheme(walletmodule, session, schemejson);
 		
 		// set scheme's uuid
 		if (schemejson.uuid)

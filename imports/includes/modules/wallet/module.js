@@ -1238,8 +1238,13 @@ var Module = class {
 			throw new Error(err);
 		});
 	}
-	
+
 	getSchemeFromWeb3Url(session, web3url, callback) {
+		console.log('OBSOLETE: Module.getSchemeFromWeb3Url should no longer be used, use Module.getLocalSchemeFromWeb3Url instead!');
+		return this.getLocalSchemeFromWeb3Url(session, web3url, callback);
+	}
+	
+	getLocalSchemeFromWeb3Url(session, web3url, callback) {
 		var global = this.global;
 		var walletmodule = this;
 		var SchemeClass = walletmodule.Scheme
@@ -1317,7 +1322,7 @@ var Module = class {
 	getDefaultSchemeConfig(flag) {
 		var global = this.global;
 
-		var schemeconfig = {restserver: {activate: false}, authserver: {activate: false}, keyserver: {activate: false}, ethnodeserver: {activate: false}};
+		var schemeconfig = {restserver: {activate: false}, authserver: {activate: false}, keyserver: {activate: false}};//, ethnodeserver: {activate: false}};
 		
 		schemeconfig.name = 'default ' + (flag == 0 ? 'local' : 'remote');
 		schemeconfig.label = 'default ' + (flag == 0 ? 'local' : 'remote');
@@ -1338,6 +1343,7 @@ var Module = class {
 	createLocalSchemeConfig(session, web3_provider_url) {
 		var localschemeconfig = this.getDefaultSchemeConfig(0);
 		
+		if (localschemeconfig.ethnodeserver)
 		localschemeconfig.ethnodeserver.web3_provider_url = web3_provider_url;
 		
 		localschemeconfig.uuid = session.guid()

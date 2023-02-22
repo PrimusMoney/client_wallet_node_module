@@ -152,6 +152,36 @@ class Client_Wallet {
 
 		return clientapicontrollers;
 	}
+
+	muteConsoleLog() {
+		if (typeof window !== 'undefined') {
+			if (!window.simplestore)
+				return;
+
+			// we are in a browser or react-native
+			window.simplestore.noconsoleoverload = false;
+
+			if (window.simplestore.Global) {
+				var _clientglobal = window.simplestore.Global.getGlobalObject();
+
+				_clientglobal.muteConsoleLog();
+			}
+		}
+		else if (typeof global !== 'undefined') {
+			if (!global.simplestore)
+				return;
+
+			// we are in nodejs
+			global.simplestore.noconsoleoverload = false;
+
+			if (global.simplestore.Global) {
+				var _clientglobal = global.simplestore.Global.getGlobalObject();
+
+				_clientglobal.muteConsoleLog();
+			}
+		}
+	}
+
 	
 	// static methods
 	static getObject() {
