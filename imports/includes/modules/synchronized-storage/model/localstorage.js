@@ -100,6 +100,11 @@ var LocalStorage = class {
 		
 		return result;
 	}
+
+	_isOverloaded() {
+		var session = this.session;
+		return ((session.overload_storage_access === false) || !session.xtraconfig.rest_server_url ? false : true);
+	}
 	
 	readLocalJson(keys, bForceRefresh, callback) {
 		if (!bForceRefresh)
@@ -108,7 +113,7 @@ var LocalStorage = class {
 		var session = this.session;
 		
 		// no overload for local sessions
-		if (!session.xtraconfig.rest_server_url)
+		if (!this._isOverloaded())
 		return this.localStorage.readLocalJson(keys, bForceRefresh, callback);
 		
 		//var user = session.getSessionUserObject();
@@ -163,7 +168,7 @@ var LocalStorage = class {
 		var session = this.session;
 		
 		// no overload for local sessions
-		if (!session.xtraconfig.rest_server_url)
+		if (!this._isOverloaded())
 			return this.localStorage.saveLocalJson(keys, json, callback); 
 
 		// otherwise

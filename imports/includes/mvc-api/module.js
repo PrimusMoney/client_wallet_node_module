@@ -5,7 +5,7 @@ var Module = class {
 	
 	constructor() {
 		this.name = 'mvc-client-wallet';
-		this.current_version = "0.30.15.2023.02.22";
+		this.current_version = "0.30.20.2023.03.03";
 		
 		this.global = null; // put by global on registration
 
@@ -2038,6 +2038,37 @@ var Module = class {
 		
 		return walletinfo;
 	}
+
+	async getWalletUserInfo(sessionuuid, walletuuid) {
+		if (!sessionuuid)
+			return Promise.reject('session uuid is undefined');
+		
+		if (!walletuuid)
+			return Promise.reject('wallet uuid is undefined');
+		
+		var global = this.global;
+		var _apicontrollers = this._getClientAPI();
+
+		var session = await _apicontrollers.getSessionObject(sessionuuid);
+
+		if (!session)
+			return Promise.reject('could not create session ' + sessionuuid);
+
+		
+		var wallet = await _apicontrollers.getWalletFromUUID(session, walletuuid);
+	
+		if (!wallet)
+			return Promise.reject('could not find wallet ' + walletuuid);
+
+		var walletsession = wallet._getSession();
+
+		if (!walletsession)
+			return Promise.reject('could not find session for wallet ' + walletuuid);
+
+		return _apicontrollers.getUserInfo(walletsession);
+	}
+	
+
 	
 	async getFromWallet(sessionuuid, walletuuid, key) {
 		if (!sessionuuid)
